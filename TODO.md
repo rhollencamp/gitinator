@@ -1,0 +1,1 @@
+- Bootstrap files are manually downloaded to static directory, use npm instead?
