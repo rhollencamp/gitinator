@@ -1,1 +1,2 @@
 - Bootstrap files are manually downloaded to static directory, use npm instead?
+- upload_pack: implement proper want/have negotiation so we send ACK and a minimal thin pack instead of always NAK + full pack

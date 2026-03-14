@@ -28,4 +28,9 @@ urlpatterns = [
         views.info_refs,
         name="info_refs",
     ),
+    path(
+        "repos/<str:group_name>/<str:repo_name>/git-upload-pack",
+        views.upload_pack,
+        name="upload_pack",
+    ),
 ]
