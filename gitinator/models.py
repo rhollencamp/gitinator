@@ -33,6 +33,10 @@ class GitObject(models.Model):
             models.UniqueConstraint(
                 fields=["repository", "sha"], name="unique_git_object_sha_per_repo"
             ),
+            models.CheckConstraint(
+                condition=models.Q(type__in=["blob", "tree", "commit", "tag"]),
+                name="valid_git_object_type",
+            ),
         ]
 
 
@@ -54,5 +58,9 @@ class GitRef(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["repository", "name", "type"], name="unique_git_ref_per_repo"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(type__in=["branch", "tag"]),
+                name="valid_git_ref_type",
             ),
         ]
