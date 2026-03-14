@@ -18,7 +18,7 @@ format:
 	. venv/bin/activate && ruff format .
 
 lint:
-	. venv/bin/activate && ruff check .
+	. venv/bin/activate && ruff check --select I --fix .
 
 test:
 	. venv/bin/activate && python manage.py test
