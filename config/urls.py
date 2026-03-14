@@ -23,4 +23,9 @@ from gitinator import views
 urlpatterns = [
     path("", views.home, name="home"),
     path("admin/", admin.site.urls),
+    path(
+        "repos/<str:group_name>/<str:repo_name>/info/refs",
+        views.info_refs,
+        name="info_refs",
+    ),
 ]
