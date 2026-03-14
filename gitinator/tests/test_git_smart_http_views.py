@@ -2,35 +2,20 @@ import hashlib
 import struct
 
 from django.test import TestCase
-from django.urls import reverse
+from django.urls import reverse as url_for
 
 from gitinator import pktline
-from gitinator.models import GitObject, GitRef, Repo
-
-COMMIT_SHA = "a" * 40
+from gitinator.tests.factories import COMMIT_SHA, make_repo_fixture
 
 
 class InfoRefsViewTest(TestCase):
     def setUp(self):
-        self.repo = Repo.objects.create(
-            group_name="myorg",
-            name="myrepo",
-            default_branch="main",
-        )
-        self.commit = GitObject.objects.create(
-            repository=self.repo,
-            sha=COMMIT_SHA,
-            type=GitObject.Type.COMMIT,
-            data=b"",
-        )
-        GitRef.objects.create(
-            repository=self.repo,
-            name="main",
-            type=GitRef.Type.BRANCH,
-            git_object=self.commit,
-        )
-        self.url = reverse(
-            "info_refs", kwargs={"group_name": "myorg", "repo_name": "myrepo"}
+        fixture = make_repo_fixture()
+        self.repo = fixture.repo
+        self.commit = fixture.commit
+        self.url = url_for(
+            "info_refs",
+            kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
         )
 
     def _get_info_refs(self, service="git-upload-pack"):
@@ -48,7 +33,7 @@ class InfoRefsViewTest(TestCase):
         self.assertEqual(response["Cache-Control"], "no-cache")
 
     def test_returns_404_for_missing_repo(self):
-        url = reverse(
+        url = url_for(
             "info_refs", kwargs={"group_name": "myorg", "repo_name": "missing"}
         )
         response = self.client.get(url, {"service": "git-upload-pack"})
@@ -99,42 +84,15 @@ class InfoRefsViewTest(TestCase):
 
 
 class UploadPackViewTest(TestCase):
-    BLOB_SHA = "b" * 40
-    TREE_SHA = "c" * 40
-    COMMIT_SHA = "a" * 40
-
     def setUp(self):
-        self.repo = Repo.objects.create(
-            group_name="myorg",
-            name="myrepo",
-            default_branch="main",
-        )
-        self.blob = GitObject.objects.create(
-            repository=self.repo,
-            sha=self.BLOB_SHA,
-            type=GitObject.Type.BLOB,
-            data=b"hello world",
-        )
-        self.tree = GitObject.objects.create(
-            repository=self.repo,
-            sha=self.TREE_SHA,
-            type=GitObject.Type.TREE,
-            data=b"tree data",
-        )
-        self.commit = GitObject.objects.create(
-            repository=self.repo,
-            sha=self.COMMIT_SHA,
-            type=GitObject.Type.COMMIT,
-            data=b"commit data",
-        )
-        GitRef.objects.create(
-            repository=self.repo,
-            name="main",
-            type=GitRef.Type.BRANCH,
-            git_object=self.commit,
-        )
-        self.url = reverse(
-            "upload_pack", kwargs={"group_name": "myorg", "repo_name": "myrepo"}
+        fixture = make_repo_fixture()
+        self.repo = fixture.repo
+        self.blob = fixture.blob
+        self.tree = fixture.tree
+        self.commit = fixture.commit
+        self.url = url_for(
+            "upload_pack",
+            kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
         )
 
     def _build_request_body(self, wants, capabilities=None):
@@ -151,7 +109,7 @@ class UploadPackViewTest(TestCase):
 
     def _post_upload_pack(self, wants=None):
         if wants is None:
-            wants = [self.COMMIT_SHA]
+            wants = [COMMIT_SHA]
         return self.client.post(
             self.url,
             data=self._build_request_body(wants),
@@ -211,12 +169,12 @@ class UploadPackViewTest(TestCase):
         self.assertEqual(pack_data[-20:], expected)
 
     def test_returns_404_for_missing_repo(self):
-        url = reverse(
+        url = url_for(
             "upload_pack", kwargs={"group_name": "myorg", "repo_name": "missing"}
         )
         response = self.client.post(
             url,
-            data=self._build_request_body([self.COMMIT_SHA]),
+            data=self._build_request_body([COMMIT_SHA]),
             content_type="application/x-git-upload-pack-request",
         )
         self.assertEqual(response.status_code, 404)
