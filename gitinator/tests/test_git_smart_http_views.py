@@ -5,7 +5,13 @@ from django.test import TestCase
 from django.urls import reverse as url_for
 
 from gitinator import pktline
-from gitinator.tests.factories import COMMIT_SHA, make_repo_fixture
+from gitinator.models import GitObject
+from gitinator.tests.factories import (
+    COMMIT_SHA,
+    make_branch,
+    make_git_object,
+    make_repo_fixture,
+)
 
 
 class InfoRefsViewTest(TestCase):
@@ -81,6 +87,23 @@ class InfoRefsViewTest(TestCase):
         response = self._get_info_refs()
         lines = pktline.decode(response.content)
         self.assertIsNone(lines[-1])
+
+    def test_head_uses_default_branch_not_first_alphabetically(self):
+        # "alpha" sorts before "main" but default_branch is "main"
+        other_sha = "d" * 40
+        other_commit = make_git_object(
+            self.repo, other_sha, type=GitObject.Type.COMMIT, data=b"other"
+        )
+        make_branch(self.repo, "alpha", other_commit)
+
+        response = self._get_info_refs()
+        lines = pktline.decode(response.content)
+        head_line = lines[2]
+        sha, rest = head_line.split(b" ", 1)
+        ref_name, capabilities = rest.split(b"\x00", 1)
+        self.assertEqual(sha.decode(), COMMIT_SHA)
+        self.assertEqual(ref_name, b"HEAD")
+        self.assertIn(b"symref=HEAD:refs/heads/main", capabilities)
 
 
 class UploadPackViewTest(TestCase):

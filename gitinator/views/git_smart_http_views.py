@@ -38,6 +38,18 @@ def info_refs(request, group_name, repo_name):
 
     # Build ref advertisement lines
     ref_lines = []
+
+    # HEAD must use the sha from the default branch
+    default_branch = repo.default_branch
+    default_ref = next(
+        (r for r in refs if r.type == GitRef.Type.BRANCH and r.name == default_branch),
+        None,
+    )
+    if default_ref is not None:
+        capabilities = f"symref=HEAD:refs/heads/{default_branch}".encode()
+        head_sha = default_ref.git_object.sha.encode()
+        ref_lines.append(pktline.encode(head_sha + b" HEAD\x00" + capabilities + b"\n"))
+
     for ref in refs:
         if ref.type == GitRef.Type.BRANCH:
             full_name = f"refs/heads/{ref.name}".encode()
@@ -45,13 +57,6 @@ def info_refs(request, group_name, repo_name):
             full_name = f"refs/tags/{ref.name}".encode()
 
         sha = ref.git_object.sha.encode()
-
-        if not ref_lines:
-            # First ref is HEAD; include capabilities after NUL byte
-            default_branch = repo.default_branch
-            capabilities = f"symref=HEAD:refs/heads/{default_branch}".encode()
-            ref_lines.append(pktline.encode(sha + b" HEAD\x00" + capabilities + b"\n"))
-
         ref_lines.append(pktline.encode(sha + b" " + full_name + b"\n"))
 
     for line in ref_lines:
