@@ -41,4 +41,4 @@ def build(objects):
     pack_header = b"PACK" + struct.pack(">II", 2, len(objects))
     pack_body = b"".join(_encode_object(obj) for obj in objects)
     pack_data = pack_header + pack_body
-    return pack_data + sha1(pack_data).digest()
+    return pack_data + sha1(pack_data, usedforsecurity=False).digest()
