@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse as url_for
 
 from gitinator import pack, pktline
-from gitinator.models import GitObject
+from gitinator.models import GitObject, GitRef
 from gitinator.tests.factories import (
     COMMIT_SHA,
     make_branch,
@@ -516,3 +516,25 @@ class ReceivePackViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         lines = self._parse_response(response.content)
         self.assertIn(b"ng refs/notes/commits unsupported ref\n", lines)
+
+    def test_sha_mismatch_returns_ng(self):
+        # Pack contains an object whose real SHA differs from the claimed new_sha
+        pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
+        wrong_sha = "f" * 40
+        response = self._post_receive_pack(
+            [(_NULL_SHA, wrong_sha, "refs/heads/new-branch")],
+            pack_data,
+        )
+        lines = self._parse_response(response.content)
+        self.assertIn(b"ng refs/heads/new-branch object not found\n", lines)
+
+    def test_sha_mismatch_does_not_create_ref(self):
+        pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
+        wrong_sha = "f" * 40
+        self._post_receive_pack(
+            [(_NULL_SHA, wrong_sha, "refs/heads/new-branch")],
+            pack_data,
+        )
+        self.assertFalse(
+            GitRef.objects.filter(repository=self.repo, name="new-branch").exists()
+        )

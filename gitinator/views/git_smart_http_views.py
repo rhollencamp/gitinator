@@ -4,8 +4,6 @@ Git HTTP protocol views.
 Reference: https://git-scm.com/docs/gitprotocol-http
 """
 
-from hashlib import sha1
-
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
 from django.views.decorators.http import require_GET, require_POST
@@ -130,14 +128,16 @@ def receive_pack(request, group_name, repo_name):
         old_sha, new_sha, refname = payload.split(b" ", 2)
         commands.append((old_sha.decode(), new_sha.decode(), refname.decode()))
 
-    # Parse and store incoming objects
+    # Parse incoming objects and verify each object's SHA matches its content
+    received_shas: set[str] = set()
     if pack_data:
         parsed_objects = pack.parse(pack_data)
+        received_shas = {obj["sha"] for obj in parsed_objects}
         GitObject.objects.bulk_create(
             [
                 GitObject(
                     repository=repo,
-                    sha=_derive_sha(obj["type"], obj["data"]),
+                    sha=obj["sha"],
                     type=obj["type"],
                     data=obj["data"],
                 )
@@ -145,6 +145,15 @@ def receive_pack(request, group_name, repo_name):
             ],
             ignore_conflicts=True,
         )
+
+    # Verify each new_sha is either in the received pack or already in the repo.
+    # This catches packs where object content doesn't match the claimed SHA.
+    existing_shas = set(
+        GitObject.objects.filter(
+            repository=repo,
+            sha__in=[new_sha for _, new_sha, _ in commands if new_sha != _NULL_SHA],
+        ).values_list("sha", flat=True)
+    )
 
     # Apply ref updates. Each command runs in its own atomic block with a
     # row-level lock so the stale-ref check and write are indivisible.
@@ -154,6 +163,13 @@ def receive_pack(request, group_name, repo_name):
             ref_type, ref_name = _parse_refname(refname)
         except ValueError:
             ref_statuses.append((refname, "ng", "unsupported ref"))
+            continue
+        if (
+            new_sha != _NULL_SHA
+            and new_sha not in received_shas
+            and new_sha not in existing_shas
+        ):
+            ref_statuses.append((refname, "ng", "object not found"))
             continue
         try:
             with transaction.atomic():
@@ -217,16 +233,6 @@ def _parse_refname(refname):
     if refname.startswith("refs/tags/"):
         return GitRef.Type.TAG, refname[len("refs/tags/") :]
     raise ValueError(f"Unrecognised ref name: {refname}")
-
-
-def _derive_sha(obj_type, data):
-    """
-    Compute the SHA-1 for a git object in the loose-object format.
-
-    Git SHA-1 = sha1("<type> <size>\\0<data>")
-    """
-    header = f"{obj_type} {len(data)}\x00".encode()
-    return sha1(header + data, usedforsecurity=False).hexdigest()
 
 
 @require_POST

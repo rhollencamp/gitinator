@@ -48,6 +48,14 @@ _TYPE_MAP_REVERSE = {v: k for k, v in _TYPE_MAP.items()}
 _DELTA_TYPES = {6, 7}  # OFS_DELTA and REF_DELTA
 
 
+def compute_sha(obj_type: str, data: bytes) -> str:
+    """Compute the SHA-1 for a git object using the loose-object format: sha1("<type> <size>\\0<data>")."""
+    h = sha1(usedforsecurity=False)
+    h.update(f"{obj_type} {len(data)}\x00".encode())
+    h.update(data)
+    return h.hexdigest()
+
+
 def _decode_type_size(data: bytes, offset: int) -> tuple[int, int, int]:
     """
     Decode a variable-length type+size header at the given offset.
@@ -73,7 +81,7 @@ def parse(data: bytes) -> list[dict]:
     """
     Parse a PACK file into a list of objects.
 
-    Each object is a dict with 'type' (str) and 'data' (bytes) keys.
+    Each object is a dict with 'type' (str), 'data' (bytes), and 'sha' (str) keys.
     Only non-delta object types (commit, tree, blob, tag) are supported.
     Raises ValueError for invalid PACK data or unsupported delta objects.
     """
@@ -102,6 +110,13 @@ def parse(data: bytes) -> list[dict]:
         decompressed = decompressor.decompress(data[offset:])
         # Advance offset by the number of compressed bytes consumed
         offset += len(data[offset:]) - len(decompressor.unused_data)
-        objects.append({"type": _TYPE_MAP_REVERSE[obj_type], "data": decompressed})
+        obj_type_str = _TYPE_MAP_REVERSE[obj_type]
+        objects.append(
+            {
+                "type": obj_type_str,
+                "data": decompressed,
+                "sha": compute_sha(obj_type_str, decompressed),
+            }
+        )
 
     return objects
