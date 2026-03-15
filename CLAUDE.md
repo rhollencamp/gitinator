@@ -2,6 +2,6 @@ This project uses the following languages / frameworks / libraries:
 - Python v3.14
 - Django 6.0.X
 
-Always activate the virtual environment before running any python commands -- `source venv/bin/activate`. There is also a Makefile with convenience commands for common tasks -- when using the Makefile you do not need to activate the virtual environment manually.
+Use the Makefile for all common tasks: `make setup` to create the venv and install dependencies, `make lint` to lint, `make format` to format, and `make test` to run tests. Only activate the virtual environment manually (`source venv/bin/activate`) when running commands not covered by the Makefile.
 
 Always add a module docstring to every Python file. Use discretion for method/function docstrings -- add them when the purpose or behavior isn't self-evident from the name and signature.
