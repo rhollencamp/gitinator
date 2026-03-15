@@ -49,7 +49,10 @@ _DELTA_TYPES = {6, 7}  # OFS_DELTA and REF_DELTA
 
 
 def compute_sha(obj_type: str, data: bytes) -> str:
-    """Compute the SHA-1 for a git object using the loose-object format: sha1("<type> <size>\\0<data>")."""
+    """Compute the SHA-1 for a git object.
+
+    Uses the loose-object format: sha1("<type> <size>\0<data>").
+    """
     h = sha1(usedforsecurity=False)
     h.update(f"{obj_type} {len(data)}\x00".encode())
     h.update(data)
