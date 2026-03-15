@@ -33,4 +33,9 @@ urlpatterns = [
         views.upload_pack,
         name="upload_pack",
     ),
+    path(
+        "repos/<str:group_name>/<str:repo_name>/git-receive-pack",
+        views.receive_pack,
+        name="receive_pack",
+    ),
 ]

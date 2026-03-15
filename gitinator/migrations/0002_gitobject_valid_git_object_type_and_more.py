@@ -4,18 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('gitinator', '0001_initial'),
+        ("gitinator", "0001_initial"),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='gitobject',
-            constraint=models.CheckConstraint(condition=models.Q(('type__in', ['blob', 'tree', 'commit', 'tag'])), name='valid_git_object_type'),
+            model_name="gitobject",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("type__in", ["blob", "tree", "commit", "tag"])),
+                name="valid_git_object_type",
+            ),
         ),
         migrations.AddConstraint(
-            model_name='gitref',
-            constraint=models.CheckConstraint(condition=models.Q(('type__in', ['branch', 'tag'])), name='valid_git_ref_type'),
+            model_name="gitref",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("type__in", ["branch", "tag"])),
+                name="valid_git_ref_type",
+            ),
         ),
     ]

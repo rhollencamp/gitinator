@@ -34,3 +34,23 @@ def decode(data: bytes) -> list:
             lines.append(data[offset + 4 : offset + length])
             offset += length
     return lines
+
+
+def decode_stream(data: bytes) -> tuple[list[bytes], bytes]:
+    """
+    Parse pkt-lines until the first flush packet.
+
+    Returns a tuple of (lines, remaining_bytes) where lines contains the
+    decoded payloads before the flush and remaining_bytes is everything
+    after the flush (e.g. raw PACK data in a receive-pack request).
+    """
+    lines = []
+    offset = 0
+    while offset < len(data):
+        length = int(data[offset : offset + 4], 16)
+        if length == 0:
+            offset += 4
+            break
+        lines.append(data[offset + 4 : offset + length])
+        offset += length
+    return lines, data[offset:]
