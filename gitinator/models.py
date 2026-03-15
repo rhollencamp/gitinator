@@ -13,6 +13,9 @@ class Repo(models.Model):
             ),
         ]
 
+    def __str__(self) -> str:
+        return f"{self.group_name}/{self.name}"
+
 
 class GitObject(models.Model):
     class Type(models.TextChoices):
@@ -39,6 +42,9 @@ class GitObject(models.Model):
             ),
         ]
 
+    def __str__(self) -> str:
+        return f"{self.sha} ({self.type})"
+
 
 class GitRef(models.Model):
     class Type(models.TextChoices):
@@ -64,3 +70,6 @@ class GitRef(models.Model):
                 name="valid_git_ref_type",
             ),
         ]
+
+    def __str__(self) -> str:
+        return f"{self.type}/{self.name} -> {self.git_object.sha}"
