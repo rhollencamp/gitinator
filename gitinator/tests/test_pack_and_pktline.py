@@ -6,7 +6,7 @@ from django.test import SimpleTestCase
 
 from gitinator import pack, pktline
 from gitinator.models import GitObject
-from gitinator.tests.factories import BLOB_SHA, COMMIT_SHA, TREE_SHA, make_repo_fixture
+from gitinator.tests.factories import BLOB_SHA, COMMIT_SHA, TREE_SHA
 
 
 class PackParseTest(SimpleTestCase):
