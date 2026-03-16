@@ -1,6 +1,6 @@
 This project uses the following languages / frameworks / libraries:
-- Python v3.14
-- Django 6.0.X
+- Python 3.11.X
+- Django 5.2.X
 
 Use the Makefile for all common tasks: `make setup` to create the venv and install dependencies, `make lint` to lint, `make format` to format, and `make test` to run tests. Only activate the virtual environment manually (`source venv/bin/activate`) when running commands not covered by the Makefile.
 
