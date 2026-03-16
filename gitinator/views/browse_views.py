@@ -1,7 +1,7 @@
 """Browse views for exploring a repository's file tree."""
 
 from django.core.exceptions import BadRequest
-from django.http import HttpResponseNotFound
+from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET
@@ -35,7 +35,7 @@ def browse(request, group_name, repo_name, path=""):
     try:
         repo = Repo.objects.get(group_name=group_name, name=repo_name)
     except Repo.DoesNotExist:
-        return HttpResponseNotFound()
+        raise Http404 from None
 
     try:
         if branch is not None:
@@ -58,7 +58,7 @@ def browse(request, group_name, repo_name, path=""):
             )
             commit_obj = ref.git_object
     except (GitRef.DoesNotExist, GitObject.DoesNotExist):
-        return HttpResponseNotFound()
+        raise Http404 from None
 
     commit_data = git.parse_commit(bytes(commit_obj.data))
 
@@ -67,7 +67,7 @@ def browse(request, group_name, repo_name, path=""):
             repository=repo, sha=commit_data.tree, type=GitObject.Type.TREE
         )
     except GitObject.DoesNotExist:
-        return HttpResponseNotFound()
+        raise Http404 from None
 
     path_parts = [p for p in path.split("/") if p] if path else []
 
@@ -108,14 +108,14 @@ def browse(request, group_name, repo_name, path=""):
         entries = git.parse_tree(bytes(current_tree.data))
         entry = next((e for e in entries if e.name == part), None)
         if entry is None:
-            return HttpResponseNotFound()
+            raise Http404 from None
         try:
             obj = GitObject.objects.get(repository=repo, sha=entry.sha)
         except GitObject.DoesNotExist:
-            return HttpResponseNotFound()
+            raise Http404 from None
         if entry.type == "blob":
             if i < len(path_parts) - 1:
-                return HttpResponseNotFound()
+                raise Http404 from None
             blob_data = bytes(obj.data)
             text = _is_text(blob_data)
             return render(
