@@ -1,4 +1,4 @@
-.PHONY: help setup format lint test dev clean
+.PHONY: help setup format lint test dev clean pr
 
 help:
 	@echo "Available commands:"
@@ -8,9 +8,10 @@ help:
 	@echo "  make test     - Run Django tests"
 	@echo "  make dev      - Run Django development server"
 	@echo "  make clean    - Remove cache files and directories"
+	@echo "  make pr       - Run all PR checks (format, lint, test) without auto-fixing"
 
 setup:
-	python3 -m venv venv
+	python3.11 -m venv venv
 	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install -e ".[dev]"
 
@@ -21,6 +22,11 @@ lint:
 	. venv/bin/activate && ruff check --fix .
 
 test:
+	. venv/bin/activate && python manage.py test
+
+pr:
+	. venv/bin/activate && ruff format --check .
+	. venv/bin/activate && ruff check .
 	. venv/bin/activate && python manage.py test
 
 dev:
