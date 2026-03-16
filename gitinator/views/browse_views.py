@@ -139,7 +139,10 @@ def browse(request, group_name, repo_name, path=""):
             )
         current_tree = obj
 
-    entries = git.parse_tree(bytes(current_tree.data))
+    entries = sorted(
+        git.parse_tree(bytes(current_tree.data)),
+        key=lambda e: (0 if e.type == "tree" else 1, e.name.lower()),
+    )
     return render(
         request,
         "gitinator/browse_tree.html",

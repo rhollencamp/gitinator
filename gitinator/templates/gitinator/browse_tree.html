@@ -21,8 +21,12 @@
       {% for entry in entries %}
       <tr>
         <td>
-          {% if entry.type == "tree" %}[dir]{% else %}[file]{% endif %}
-          <a href="{{ entry_url_base }}{{ entry.name }}{{ ref_query }}">{{ entry.name }}</a>
+          {% if entry.type == "tree" %}
+            <i class="bi bi-folder-fill text-primary"></i>
+          {% else %}
+            <i class="bi bi-file-earmark-text"></i>
+          {% endif %}
+          <a class="text-decoration-none text-body" href="{{ entry_url_base }}{{ entry.name }}{{ ref_query }}">{{ entry.name }}</a>
         </td>
       </tr>
       {% endfor %}
