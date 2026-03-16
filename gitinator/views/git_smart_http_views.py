@@ -6,6 +6,7 @@ Reference: https://git-scm.com/docs/gitprotocol-http
 
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gitinator import pack, pktline
@@ -105,6 +106,7 @@ def _ref_full_name(ref):
     return f"refs/tags/{ref.name}".encode()
 
 
+@csrf_exempt
 @require_POST
 def receive_pack(request, group_name, repo_name):
     """
@@ -235,6 +237,7 @@ def _parse_refname(refname):
     raise ValueError(f"Unrecognised ref name: {refname}")
 
 
+@csrf_exempt
 @require_POST
 def upload_pack(request, group_name, repo_name):
     """
