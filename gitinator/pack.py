@@ -50,7 +50,6 @@ _TYPE_MAP_REVERSE = {v: k for k, v in _TYPE_MAP.items()}
 _DELTA_TYPES = {6, 7}  # OFS_DELTA and REF_DELTA
 
 
-
 def _decode_type_size(data: bytes, offset: int) -> tuple[int, int, int]:
     """
     Decode a variable-length type+size header at the given offset.

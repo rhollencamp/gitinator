@@ -2,7 +2,6 @@
 Tests for gitinator.git: object parsing and ref name utilities.
 """
 
-
 from django.test import SimpleTestCase
 
 from gitinator import git
@@ -136,9 +135,8 @@ class ParseTreeTest(SimpleTestCase):
     def test_multiple_entries(self):
         blob_sha = "a" * 40
         tree_sha = "b" * 40
-        data = (
-            self._encode_entry("100644", "file.txt", blob_sha)
-            + self._encode_entry("40000", "subdir", tree_sha)
+        data = self._encode_entry("100644", "file.txt", blob_sha) + self._encode_entry(
+            "40000", "subdir", tree_sha
         )
         entries = git.parse_tree(data)
         self.assertEqual(len(entries), 2)

@@ -19,18 +19,24 @@ def compute_sha(obj_type: str, data: bytes) -> str:
 
 
 def ref_full_name(ref_type: str, name: str) -> str:
-    """Return the full refname for a branch or tag (e.g. refs/heads/main or refs/tags/v1.0)."""
+    """Return the full refname for a branch or tag.
+
+    Examples: refs/heads/main, refs/tags/v1.0.
+    """
     if ref_type == "branch":
         return f"refs/heads/{name}"
     return f"refs/tags/{name}"
 
 
 def parse_refname(refname: str) -> tuple[Literal["branch", "tag"], str]:
-    """Return (type, short_name) from a full ref name like refs/heads/main or refs/tags/v1.0."""
+    """Return (type, short_name) from a full ref name.
+
+    Examples: refs/heads/main, refs/tags/v1.0.
+    """
     if refname.startswith("refs/heads/"):
-        return "branch", refname[len("refs/heads/"):]
+        return "branch", refname[len("refs/heads/") :]
     if refname.startswith("refs/tags/"):
-        return "tag", refname[len("refs/tags/"):]
+        return "tag", refname[len("refs/tags/") :]
     raise ValueError(f"Unrecognised ref name: {refname}")
 
 
@@ -83,12 +89,15 @@ class TreeEntry:
     """A single entry within a git tree object."""
 
     name: str
-    sha: str   # hex SHA-1
+    sha: str  # hex SHA-1
     mode: str  # e.g. "100644", "40000", "100755", "120000"
 
     @property
     def type(self) -> Literal["blob", "tree"]:
-        """Infer object type from mode: mode starting with 4 is a subtree, otherwise a blob."""
+        """Infer object type from mode.
+
+        Mode starting with 4 is a subtree, otherwise a blob.
+        """
         return "tree" if self.mode.startswith("4") else "blob"
 
 
@@ -103,7 +112,7 @@ def parse_tree(data: bytes) -> list[TreeEntry]:
         null_pos = data.index(b"\x00", offset)
         header = data[offset:null_pos].decode("utf-8")
         mode, name = header.split(" ", 1)
-        sha = data[null_pos + 1:null_pos + 21].hex()
+        sha = data[null_pos + 1 : null_pos + 21].hex()
         entries.append(TreeEntry(name=name, sha=sha, mode=mode))
         offset = null_pos + 21
     return entries
