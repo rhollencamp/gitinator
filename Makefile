@@ -11,7 +11,7 @@ help:
 	@echo "  make pr       - Run all PR checks (format, lint, test) without auto-fixing"
 
 setup:
-	python3 -m venv venv
+	python3.11 -m venv venv
 	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install -e ".[dev]"
 

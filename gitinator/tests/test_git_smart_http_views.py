@@ -63,7 +63,8 @@ class InfoRefsViewTest(TestCase):
     def test_response_body_advertises_head(self):
         response = self._get_info_refs()
         lines = pktline.decode(response.content)
-        # HEAD line is first ref (after service header + flush), contains sha and symref capability
+        # HEAD line is first ref (after service header + flush), contains sha
+        # and symref capability
         head_line = lines[2]
         sha, rest = head_line.split(b" ", 1)
         ref_name, capabilities = rest.split(b"\x00", 1)
