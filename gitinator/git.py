@@ -25,7 +25,9 @@ def ref_full_name(ref_type: str, name: str) -> str:
     """
     if ref_type == "branch":
         return f"refs/heads/{name}"
-    return f"refs/tags/{name}"
+    if ref_type == "tag":
+        return f"refs/tags/{name}"
+    raise ValueError(f"Unrecognised ref type: {ref_type}")
 
 
 def parse_refname(refname: str) -> tuple[Literal["branch", "tag"], str]:

@@ -154,7 +154,8 @@ def receive_pack(request, group_name, repo_name):
     ref_statuses = []  # list of (refname, "ok"|"ng", reason_or_None)
     for old_sha, new_sha, refname in commands:
         try:
-            ref_type, ref_name = git.parse_refname(refname)
+            ref_type_str, ref_name = git.parse_refname(refname)
+            ref_type = GitRef.Type(ref_type_str)
         except ValueError:
             ref_statuses.append((refname, "ng", "unsupported ref"))
             continue

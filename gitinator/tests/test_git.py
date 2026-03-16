@@ -32,6 +32,10 @@ class RefFullNameTest(SimpleTestCase):
             git.ref_full_name("branch", "feature/foo"), "refs/heads/feature/foo"
         )
 
+    def test_invalid_type(self):
+        with self.assertRaises(ValueError):
+            git.ref_full_name("remote", "main")
+
 
 class ParseRefnameTest(SimpleTestCase):
     def test_branch(self):
