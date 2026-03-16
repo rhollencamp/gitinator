@@ -124,10 +124,18 @@ def receive_pack(request, group_name, repo_name):
         old_sha, new_sha, refname = payload.split(b" ", 2)
         commands.append((old_sha.decode(), new_sha.decode(), refname.decode()))
 
-    # Parse incoming objects and verify each object's SHA matches its content
+    # Parse incoming objects and verify each object's SHA matches its content.
+    # base_lookup handles REF_DELTA objects whose base is already stored in the repo.
+    def _base_lookup(sha: str):
+        try:
+            obj = GitObject.objects.get(repository=repo, sha=sha)
+            return obj.type, bytes(obj.data)
+        except GitObject.DoesNotExist:
+            return None
+
     received_shas: set[str] = set()
     if pack_data:
-        parsed_objects = pack.parse(pack_data)
+        parsed_objects = pack.parse(pack_data, base_lookup=_base_lookup)
         received_shas = {obj["sha"] for obj in parsed_objects}
         GitObject.objects.bulk_create(
             [

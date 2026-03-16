@@ -60,6 +60,27 @@ def _make_browse_fixture(group_name="myorg", name="myrepo", default_branch="main
     return repo
 
 
+class BrowseEmptyRepoTest(TestCase):
+    def setUp(self):
+        self.repo = make_repo()
+        self.url = url_for(
+            "browse",
+            kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
+        )
+
+    def test_returns_200(self):
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_uses_browse_empty_template(self):
+        response = self.client.get(self.url)
+        self.assertTemplateUsed(response, "gitinator/browse_empty.html")
+
+    def test_shows_repo_name(self):
+        response = self.client.get(self.url)
+        self.assertContains(response, self.repo.name)
+
+
 class BrowseRootTreeTest(TestCase):
     def setUp(self):
         self.repo = _make_browse_fixture()

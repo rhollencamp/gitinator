@@ -53,9 +53,12 @@ def browse(request, group_name, repo_name, path=""):
                 repository=repo, sha=commit_sha, type=GitObject.Type.COMMIT
             )
         else:
-            ref = GitRef.objects.select_related("git_object").get(
-                repository=repo, name=repo.default_branch, type=GitRef.Type.BRANCH
-            )
+            try:
+                ref = GitRef.objects.select_related("git_object").get(
+                    repository=repo, name=repo.default_branch, type=GitRef.Type.BRANCH
+                )
+            except GitRef.DoesNotExist:
+                return render(request, "gitinator/browse_empty.html", {"repo": repo})
             commit_obj = ref.git_object
     except (GitRef.DoesNotExist, GitObject.DoesNotExist) as err:
         raise Http404 from err

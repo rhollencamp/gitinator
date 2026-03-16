@@ -412,8 +412,6 @@ class ReceivePackViewTest(TestCase):
             [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
-        from gitinator.models import GitRef
-
         self.assertTrue(
             GitRef.objects.filter(
                 repository=self.repo, name="new-branch", type=GitRef.Type.BRANCH
@@ -441,8 +439,6 @@ class ReceivePackViewTest(TestCase):
             [(COMMIT_SHA, self.NEW_COMMIT_SHA, "refs/heads/main")],
             pack_data,
         )
-        from gitinator.models import GitRef
-
         ref = GitRef.objects.get(repository=self.repo, name="main")
         self.assertEqual(ref.git_object.sha, self.NEW_COMMIT_SHA)
 
@@ -451,8 +447,6 @@ class ReceivePackViewTest(TestCase):
             [(COMMIT_SHA, _NULL_SHA, "refs/heads/main")],
             b"",
         )
-        from gitinator.models import GitRef
-
         self.assertFalse(
             GitRef.objects.filter(repository=self.repo, name="main").exists()
         )
@@ -474,8 +468,6 @@ class ReceivePackViewTest(TestCase):
             [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/main")],
             pack_data,
         )
-        from gitinator.models import GitRef
-
         ref = GitRef.objects.get(repository=self.repo, name="main")
         self.assertEqual(ref.git_object.sha, COMMIT_SHA)
 
@@ -503,8 +495,6 @@ class ReceivePackViewTest(TestCase):
             [(wrong_old_sha, _NULL_SHA, "refs/heads/main")],
             b"",
         )
-        from gitinator.models import GitRef
-
         self.assertTrue(
             GitRef.objects.filter(repository=self.repo, name="main").exists()
         )
