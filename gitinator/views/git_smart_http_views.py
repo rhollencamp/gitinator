@@ -6,6 +6,7 @@ Reference: https://git-scm.com/docs/gitprotocol-http
 
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gitinator import git, pack, pktline
@@ -99,6 +100,7 @@ def _build_receive_pack_advertisement(repo):
     return b"".join(ref_lines) + pktline.flush()
 
 
+@csrf_exempt
 @require_POST
 def receive_pack(request, group_name, repo_name):
     """
@@ -221,6 +223,7 @@ def receive_pack(request, group_name, repo_name):
     return response
 
 
+@csrf_exempt
 @require_POST
 def upload_pack(request, group_name, repo_name):
     """
