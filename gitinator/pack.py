@@ -8,6 +8,8 @@ import struct
 import zlib
 from hashlib import sha1
 
+from gitinator.git import compute_sha
+
 _TYPE_MAP = {
     "commit": 1,
     "tree": 2,
@@ -47,16 +49,6 @@ def build(objects):
 _TYPE_MAP_REVERSE = {v: k for k, v in _TYPE_MAP.items()}
 _DELTA_TYPES = {6, 7}  # OFS_DELTA and REF_DELTA
 
-
-def compute_sha(obj_type: str, data: bytes) -> str:
-    """Compute the SHA-1 for a git object.
-
-    Uses the loose-object format: sha1("<type> <size>\0<data>").
-    """
-    h = sha1(usedforsecurity=False)
-    h.update(f"{obj_type} {len(data)}\x00".encode())
-    h.update(data)
-    return h.hexdigest()
 
 
 def _decode_type_size(data: bytes, offset: int) -> tuple[int, int, int]:

@@ -8,7 +8,7 @@ from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
 from django.views.decorators.http import require_GET, require_POST
 
-from gitinator import pack, pktline
+from gitinator import git, pack, pktline
 from gitinator.models import GitObject, GitRef, Repo
 
 _NULL_SHA = "0" * 40
@@ -68,7 +68,7 @@ def _build_upload_pack_advertisement(repo):
         ref_lines.append(pktline.encode(head_sha + b" HEAD\x00" + capabilities + b"\n"))
 
     for ref in refs:
-        full_name = _ref_full_name(ref)
+        full_name = git.ref_full_name(ref.type, ref.name).encode()
         sha = ref.git_object.sha.encode()
         ref_lines.append(pktline.encode(sha + b" " + full_name + b"\n"))
 
@@ -87,7 +87,7 @@ def _build_receive_pack_advertisement(repo):
 
     ref_lines = []
     for i, ref in enumerate(refs):
-        full_name = _ref_full_name(ref)
+        full_name = git.ref_full_name(ref.type, ref.name).encode()
         sha = ref.git_object.sha.encode()
         if i == 0:
             ref_lines.append(
@@ -97,12 +97,6 @@ def _build_receive_pack_advertisement(repo):
             ref_lines.append(pktline.encode(sha + b" " + full_name + b"\n"))
 
     return b"".join(ref_lines) + pktline.flush()
-
-
-def _ref_full_name(ref):
-    if ref.type == GitRef.Type.BRANCH:
-        return f"refs/heads/{ref.name}".encode()
-    return f"refs/tags/{ref.name}".encode()
 
 
 @require_POST
@@ -160,7 +154,7 @@ def receive_pack(request, group_name, repo_name):
     ref_statuses = []  # list of (refname, "ok"|"ng", reason_or_None)
     for old_sha, new_sha, refname in commands:
         try:
-            ref_type, ref_name = _parse_refname(refname)
+            ref_type, ref_name = git.parse_refname(refname)
         except ValueError:
             ref_statuses.append((refname, "ng", "unsupported ref"))
             continue
@@ -224,15 +218,6 @@ def receive_pack(request, group_name, repo_name):
     response = HttpResponse(body, content_type="application/x-git-receive-pack-result")
     response["Cache-Control"] = "no-cache"
     return response
-
-
-def _parse_refname(refname):
-    """Return (GitRef.Type, short_name) from a full ref name like refs/heads/main."""
-    if refname.startswith("refs/heads/"):
-        return GitRef.Type.BRANCH, refname[len("refs/heads/") :]
-    if refname.startswith("refs/tags/"):
-        return GitRef.Type.TAG, refname[len("refs/tags/") :]
-    raise ValueError(f"Unrecognised ref name: {refname}")
 
 
 @require_POST
