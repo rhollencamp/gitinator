@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo.name }} - Gitinator{% endblock %}
+
+{% block content %}
+<div class="py-3">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      {% for crumb in breadcrumbs %}
+        {% if crumb.url %}
+          <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
+        {% else %}
+          <li class="breadcrumb-item active" aria-current="page">{{ crumb.label }}</li>
+        {% endif %}
+      {% endfor %}
+    </ol>
+  </nav>
+
+  <table class="table table-sm table-hover">
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td>
+          {% if entry.type == "tree" %}[dir]{% else %}[file]{% endif %}
+          <a href="{{ entry_url_base }}{{ entry.name }}{{ ref_query }}">{{ entry.name }}</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

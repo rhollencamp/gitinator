@@ -38,4 +38,14 @@ urlpatterns = [
         views.receive_pack,
         name="receive_pack",
     ),
+    path(
+        "repos/<str:group_name>/<str:repo_name>/browse/",
+        views.browse,
+        name="browse",
+    ),
+    path(
+        "repos/<str:group_name>/<str:repo_name>/browse/<path:path>",
+        views.browse,
+        name="browse_path",
+    ),
 ]
