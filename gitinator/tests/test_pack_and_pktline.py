@@ -2,10 +2,16 @@
 Tests for pack.parse() and pktline.decode_stream().
 """
 
+import hashlib
+import struct
+import zlib
+
 from django.test import SimpleTestCase
 
 from gitinator import pack, pktline
+from gitinator.git import compute_sha
 from gitinator.models import GitObject
+from gitinator.pack import _apply_delta  # noqa: PLC2701
 from gitinator.tests.factories import BLOB_SHA, COMMIT_SHA, TREE_SHA
 
 
@@ -56,23 +62,60 @@ class PackParseTest(SimpleTestCase):
         with self.assertRaises(ValueError):
             pack.parse(corrupted)
 
-    def test_parse_raises_for_delta_objects(self):
-        # Craft a minimal pack with a type-6 (OFS_DELTA) object header
-        import struct
-        import zlib
+    def test_parse_ref_delta_with_base_lookup(self):
+        """REF_DELTA objects are resolved via base_lookup when base is not in pack."""
+        base_data = b"hello"
+        base_type = "blob"
+        base_sha_hex = compute_sha(base_type, base_data)
+        base_sha_bytes = bytes.fromhex(base_sha_hex)
 
-        # Build a pack header for 1 object
+        # Delta: copy all 5 bytes from base, then insert b" world"
+        # src_size=5, tgt_size=11, copy(offset=0, size=5), insert(6 bytes)
+        delta = bytes([0x05, 0x0B, 0x90, 0x05, 0x06]) + b" world"
+        # Verify _apply_delta produces the expected result before building the pack
+        self.assertEqual(_apply_delta(base_data, delta), b"hello world")
+
+        delta_size = len(delta)  # 11 fits in 4 bits
+        type_size_byte = bytes([(7 << 4) | (delta_size & 0x0F)])
+        compressed_delta = zlib.compress(delta)
+
+        header = b"PACK" + struct.pack(">II", 2, 1)
+        body = type_size_byte + base_sha_bytes + compressed_delta
+        pack_data = header + body
+        pack_data += hashlib.sha1(pack_data, usedforsecurity=False).digest()
+
+        def base_lookup(sha):
+            return (base_type, base_data) if sha == base_sha_hex else None
+
+        parsed = pack.parse(pack_data, base_lookup=base_lookup)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["type"], "blob")
+        self.assertEqual(parsed[0]["data"], b"hello world")
+
+    def test_parse_raises_for_ofs_delta(self):
+        """OFS_DELTA (type 6) objects are not yet supported and raise ValueError."""
         header = b"PACK" + struct.pack(">II", 2, 1)
         # type 6 = OFS_DELTA; encode type+size byte: (6 << 4) | 0 = 0x60
-        obj_header = bytes([0x60])
-        obj_data = zlib.compress(b"\x00")
-        body = obj_header + obj_data
-        import hashlib
-
+        body = bytes([0x60]) + zlib.compress(b"\x00")
         pack_data = header + body
         pack_data += hashlib.sha1(pack_data, usedforsecurity=False).digest()
         with self.assertRaises(ValueError):
             pack.parse(pack_data)
+
+    def test_parse_ref_delta_raises_when_base_not_found(self):
+        """REF_DELTA without a resolvable base raises ValueError."""
+        base_sha_bytes = bytes.fromhex(compute_sha("blob", b"hello"))
+        delta = bytes([0x05, 0x0B, 0x90, 0x05, 0x06]) + b" world"
+        delta_size = len(delta)
+        type_size_byte = bytes([(7 << 4) | (delta_size & 0x0F)])
+
+        header = b"PACK" + struct.pack(">II", 2, 1)
+        body = type_size_byte + base_sha_bytes + zlib.compress(delta)
+        pack_data = header + body
+        pack_data += hashlib.sha1(pack_data, usedforsecurity=False).digest()
+
+        with self.assertRaises(ValueError):
+            pack.parse(pack_data)  # no base_lookup provided
 
 
 class PktlineDecodeStreamTest(SimpleTestCase):

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }} - Gitinator{% endblock %}
+
+{% block content %}
+<div class="py-3">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+      {% for crumb in breadcrumbs %}
+        {% if crumb.url %}
+          <li class="breadcrumb-item"><a href="{{ crumb.url }}">{{ crumb.label }}</a></li>
+        {% else %}
+          <li class="breadcrumb-item active" aria-current="page">{{ crumb.label }}</li>
+        {% endif %}
+      {% endfor %}
+    </ol>
+  </nav>
+
+  {% if is_text %}
+    <pre class="border p-3 bg-light">{{ content }}</pre>
+  {% else %}
+    <p class="text-muted">Binary file not shown.</p>
+  {% endif %}
+</div>
+{% endblock %}
