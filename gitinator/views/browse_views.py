@@ -34,8 +34,8 @@ def browse(request, group_name, repo_name, path=""):
 
     try:
         repo = Repo.objects.get(group_name=group_name, name=repo_name)
-    except Repo.DoesNotExist:
-        raise Http404 from None
+    except Repo.DoesNotExist as err:
+        raise Http404 from err
 
     try:
         if branch is not None:
@@ -57,8 +57,8 @@ def browse(request, group_name, repo_name, path=""):
                 repository=repo, name=repo.default_branch, type=GitRef.Type.BRANCH
             )
             commit_obj = ref.git_object
-    except (GitRef.DoesNotExist, GitObject.DoesNotExist):
-        raise Http404 from None
+    except (GitRef.DoesNotExist, GitObject.DoesNotExist) as err:
+        raise Http404 from err
 
     commit_data = git.parse_commit(bytes(commit_obj.data))
 
@@ -66,8 +66,8 @@ def browse(request, group_name, repo_name, path=""):
         tree_obj = GitObject.objects.get(
             repository=repo, sha=commit_data.tree, type=GitObject.Type.TREE
         )
-    except GitObject.DoesNotExist:
-        raise Http404 from None
+    except GitObject.DoesNotExist as err:
+        raise Http404 from err
 
     path_parts = [p for p in path.split("/") if p] if path else []
 
@@ -108,14 +108,14 @@ def browse(request, group_name, repo_name, path=""):
         entries = git.parse_tree(bytes(current_tree.data))
         entry = next((e for e in entries if e.name == part), None)
         if entry is None:
-            raise Http404 from None
+            raise Http404
         try:
             obj = GitObject.objects.get(repository=repo, sha=entry.sha)
-        except GitObject.DoesNotExist:
-            raise Http404 from None
+        except GitObject.DoesNotExist as err:
+            raise Http404 from err
         if entry.type == "blob":
             if i < len(path_parts) - 1:
-                raise Http404 from None
+                raise Http404
             blob_data = bytes(obj.data)
             text = _is_text(blob_data)
             return render(
