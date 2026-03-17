@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gitinator import git, pack, pktline
+from gitinator.hooks.registry import run_update_hooks
 from gitinator.models import GitObject, GitRef, Repo
 
 _NULL_SHA = "0" * 40
@@ -168,6 +169,10 @@ def receive_pack(request, group_name, repo_name):
             ref_type = GitRef.Type(ref_type_str)
         except ValueError:
             ref_statuses.append((refname, "ng", "unsupported ref"))
+            continue
+        hook_error = run_update_hooks(repo, refname, old_sha, new_sha)
+        if hook_error:
+            ref_statuses.append((refname, "ng", hook_error))
             continue
         if (
             new_sha != _NULL_SHA
