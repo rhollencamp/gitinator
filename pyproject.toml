@@ -1,14 +1,16 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "gitinator"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "Django~=5.2.0",
+    "gunicorn~=23.0",
 ]
+
+# Setuptools auto-discovery finds both `gitinator` and `config` (the Django
+# settings package) and refuses to build. Explicitly include only `gitinator`.
+[tool.setuptools.packages.find]
+include = ["gitinator*"]
 
 [project.optional-dependencies]
 dev = [
