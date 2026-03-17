@@ -1,0 +1,46 @@
+# fly.toml app configuration file generated for gitinator on 2026-03-17T18:08:39-04:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'gitinator'
+primary_region = 'ewr'
+console_command = '/code/manage.py shell'
+swap_size_mb = 256
+
+[build]
+
+# [deploy]
+#   release_command = 'python3 manage.py migrate --noinput'
+
+[env]
+  ALLOWED_HOSTS = 'gitinator.fly.dev'
+  DATA_DIR = '/data'
+  PORT = '8000'
+
+[[mounts]]
+  source = 'gitinator_data'
+  destination = '/data'
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+
+  [[http_service.checks]]
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+    method = 'GET'
+    path = '/'
+    [http_service.checks.headers]
+      Host = 'gitinator.fly.dev'
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 256
+
+[[statics]]
+  guest_path = '/app/staticfiles'
+  url_prefix = '/static/'

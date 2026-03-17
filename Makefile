@@ -1,4 +1,4 @@
-.PHONY: help setup format lint test dev clean pr
+.PHONY: help setup format lint test dev clean pr fly
 
 help:
 	@echo "Available commands:"
@@ -9,6 +9,7 @@ help:
 	@echo "  make dev      - Run Django development server"
 	@echo "  make clean    - Remove cache files and directories"
 	@echo "  make pr       - Run all PR checks (format, lint, test) without auto-fixing"
+	@echo "  make fly      - Deploy to Fly.io"
 
 setup:
 	python3.11 -m venv venv
@@ -33,6 +34,9 @@ pr:
 
 dev:
 	. venv/bin/activate && DEBUG=true python manage.py runserver
+
+fly:
+	flyctl deploy --remote-only --image-label $(shell git rev-parse HEAD)
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
