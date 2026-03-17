@@ -14,6 +14,7 @@ setup:
 	python3.11 -m venv venv
 	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install -e ".[dev]"
+	. venv/bin/activate && python3 manage.py migrate
 
 format:
 	. venv/bin/activate && ruff format .
@@ -35,4 +36,4 @@ dev:
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
-	rm -rf .ruff_cache
+	rm -rf .ruff_cache venv db.sqlite3

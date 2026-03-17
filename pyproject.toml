@@ -7,6 +7,11 @@ dependencies = [
     "gunicorn~=23.0",
 ]
 
+# Setuptools auto-discovery finds both `gitinator` and `config` (the Django
+# settings package) and refuses to build. Explicitly include only `gitinator`.
+[tool.setuptools.packages.find]
+include = ["gitinator*"]
+
 [project.optional-dependencies]
 dev = [
     "django-stubs~=5.2.0",
