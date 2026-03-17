@@ -30,7 +30,7 @@ pr:
 	. venv/bin/activate && python manage.py test
 
 dev:
-	. venv/bin/activate && python manage.py runserver
+	. venv/bin/activate && DEBUG=true python manage.py runserver
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

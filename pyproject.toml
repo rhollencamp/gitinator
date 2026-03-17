@@ -1,13 +1,10 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "gitinator"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "Django~=5.2.0",
+    "gunicorn~=23.0",
 ]
 
 [project.optional-dependencies]
