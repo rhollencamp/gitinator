@@ -6,6 +6,7 @@ _NULL_SHA = "0" * 40
 def _is_ancestor(repo, old_sha, new_sha):
     """Return True if old_sha is an ancestor of (or equal to) new_sha."""
     from gitinator.models import GitObject
+    from gitinator.git import parse_commit
 
     visited = set()
     queue = [new_sha]
@@ -22,12 +23,7 @@ def _is_ancestor(repo, old_sha, new_sha):
             )
         except GitObject.DoesNotExist:
             continue
-        data = bytes(obj.data).decode("utf-8", errors="replace")
-        for line in data.split("\n"):
-            if line.startswith("parent "):
-                queue.append(line[7:].strip())
-            elif line == "":
-                break
+        queue.extend(parse_commit(bytes(obj.data)).parents)
     return False
 
 
