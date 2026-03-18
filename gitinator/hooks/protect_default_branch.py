@@ -1,12 +1,15 @@
 """Hook that protects the default branch from deletion and force pushes."""
 
+from gitinator.git import parse_commit
+
 _NULL_SHA = "0" * 40
 
 
 def _is_ancestor(repo, old_sha, new_sha):
     """Return True if old_sha is an ancestor of (or equal to) new_sha."""
+    # Imported here to avoid a circular import: models imports app config which
+    # triggers hook registration before Django's app registry is ready.
     from gitinator.models import GitObject
-    from gitinator.git import parse_commit
 
     visited = set()
     queue = [new_sha]
