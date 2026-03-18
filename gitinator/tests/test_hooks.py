@@ -7,10 +7,9 @@ import hashlib
 from django.test import TestCase
 from django.urls import reverse as url_for
 
-from gitinator import pack, pktline
-from gitinator.hooks import registry
+from gitinator import hooks, pack, pktline
+from gitinator.hooks import run_update_hooks
 from gitinator.hooks.protect_default_branch import update_hook
-from gitinator.hooks.registry import register_update_hook, run_update_hooks
 from gitinator.models import GitObject
 from gitinator.tests.factories import (
     COMMIT_SHA,
@@ -28,27 +27,27 @@ def _git_sha(obj_type, data):
     return hashlib.sha1(header + data, usedforsecurity=False).hexdigest()
 
 
-class RegistryTest(TestCase):
-    """Unit tests for the hook registry (register_update_hook / run_update_hooks)."""
+class HookListTest(TestCase):
+    """Unit tests for the hook list and run_update_hooks."""
 
     def setUp(self):
-        self._saved_hooks = list(registry._update_hooks)
-        registry._update_hooks.clear()
+        self._saved_hooks = list(hooks._update_hooks)
+        hooks._update_hooks.clear()
 
     def tearDown(self):
-        registry._update_hooks[:] = self._saved_hooks
+        hooks._update_hooks[:] = self._saved_hooks
 
-    def test_empty_registry_returns_none(self):
+    def test_empty_list_returns_none(self):
         result = run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
         self.assertIsNone(result)
 
     def test_approving_hook_returns_none(self):
-        register_update_hook(lambda *a: None)
+        hooks._update_hooks.append(lambda *a: None)
         result = run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
         self.assertIsNone(result)
 
     def test_rejecting_hook_returns_reason(self):
-        register_update_hook(lambda *a: "blocked")
+        hooks._update_hooks.append(lambda *a: "blocked")
         self.assertEqual(
             run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40), "blocked"
         )
@@ -64,8 +63,7 @@ class RegistryTest(TestCase):
             calls.append(2)
             return None
 
-        register_update_hook(hook1)
-        register_update_hook(hook2)
+        hooks._update_hooks.extend([hook1, hook2])
         run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
         self.assertEqual(calls, [1])
 

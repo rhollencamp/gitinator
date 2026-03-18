@@ -1,12 +1,12 @@
 """Hook that protects the default branch from deletion and force pushes."""
 
-from gitinator.models import GitObject
-
 _NULL_SHA = "0" * 40
 
 
 def _is_ancestor(repo, old_sha, new_sha):
     """Return True if old_sha is an ancestor of (or equal to) new_sha."""
+    from gitinator.models import GitObject
+
     visited = set()
     queue = [new_sha]
     while queue:
