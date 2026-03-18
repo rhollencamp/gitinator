@@ -5,8 +5,9 @@ from gitinator.git import NULL_SHA, parse_commit
 
 def _is_ancestor(repo, old_sha, new_sha):
     """Return True if old_sha is an ancestor of (or equal to) new_sha."""
-    # Imported here to avoid a circular import: models imports app config which
-    # triggers hook registration before Django's app registry is ready.
+    # Imported here to avoid importing models at module load time: Django's ORM
+    # is not ready until the app registry is fully populated, and this module
+    # is loaded early (via hooks/__init__.py) before that happens.
     from gitinator.models import GitObject
 
     visited = set()
@@ -23,6 +24,8 @@ def _is_ancestor(repo, old_sha, new_sha):
                 repository=repo, sha=sha, type=GitObject.Type.COMMIT
             )
         except GitObject.DoesNotExist:
+            # Can't walk further; if old_sha isn't reachable via known
+            # history, treat the push as a non-fast-forward.
             continue
         queue.extend(parse_commit(bytes(obj.data)).parents)
     return False

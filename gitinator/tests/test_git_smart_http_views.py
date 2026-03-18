@@ -454,6 +454,7 @@ class ReceivePackViewTest(TestCase):
         )
 
     def test_stale_old_sha_on_update_returns_ng(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
@@ -464,15 +465,15 @@ class ReceivePackViewTest(TestCase):
         self.assertIn(b"ng refs/heads/feature stale ref\n", lines)
 
     def test_stale_old_sha_does_not_update_ref(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         self._post_receive_pack(
             [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/feature")],
             pack_data,
         )
-        self.assertFalse(
-            GitRef.objects.filter(repository=self.repo, name="feature").exists()
-        )
+        ref = GitRef.objects.get(repository=self.repo, name="feature")
+        self.assertEqual(ref.git_object.sha, COMMIT_SHA)
 
     def test_missing_object_returns_ng(self):
         missing_sha = "f" * 40
