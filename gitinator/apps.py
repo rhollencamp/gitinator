@@ -1,11 +1,9 @@
-"""Django AppConfig for the gitinator application."""
+"""Django app configuration"""
 
 from django.apps import AppConfig
 
 
 class GitinatorConfig(AppConfig):
-    """Application configuration for gitinator."""
-
     name = "gitinator"
     default_auto_field = "django.db.models.BigAutoField"
 

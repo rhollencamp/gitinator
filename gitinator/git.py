@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from typing import Literal
 
+NULL_SHA = "0" * 40
+
 
 def compute_sha(obj_type: str, data: bytes) -> str:
     """Compute the SHA-1 for a git object using the loose-object format.
@@ -117,8 +119,7 @@ def build_tree(entries: list[TreeEntry]) -> tuple[str, bytes]:
     """
     sorted_entries = sorted(entries, key=lambda e: e.name)
     data = b"".join(
-        f"{e.mode} {e.name}\x00".encode() + bytes.fromhex(e.sha)
-        for e in sorted_entries
+        f"{e.mode} {e.name}\x00".encode() + bytes.fromhex(e.sha) for e in sorted_entries
     )
     sha = compute_sha("tree", data)
     return sha, data
@@ -129,10 +130,7 @@ def build_commit(
 ) -> tuple[str, bytes]:
     """Return (sha, data) for a git commit object."""
     data = (
-        f"tree {tree_sha}\n"
-        f"author {author}\n"
-        f"committer {committer}\n"
-        f"\n{message}"
+        f"tree {tree_sha}\nauthor {author}\ncommitter {committer}\n\n{message}"
     ).encode()
     sha = compute_sha("commit", data)
     return sha, data
