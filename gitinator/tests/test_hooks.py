@@ -177,16 +177,12 @@ class ProtectDefaultBranchIntegrationTest(TestCase):
             [(self.OLD_SHA, self.FORCE_SHA, "refs/heads/main")], pack_data
         )
         lines = self._lines(response.content)
-        self.assertTrue(
-            any(line.startswith(b"ng refs/heads/main ") for line in lines)
-        )
+        self.assertTrue(any(line.startswith(b"ng refs/heads/main ") for line in lines))
 
     def test_deletion_of_default_branch_is_rejected(self):
         response = self._post([(self.OLD_SHA, NULL_SHA, "refs/heads/main")])
         lines = self._lines(response.content)
-        self.assertTrue(
-            any(line.startswith(b"ng refs/heads/main ") for line in lines)
-        )
+        self.assertTrue(any(line.startswith(b"ng refs/heads/main ") for line in lines))
 
     def test_force_push_to_non_default_branch_is_accepted(self):
         feature_commit = make_git_object(

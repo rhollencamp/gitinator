@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from hashlib import sha1
 from typing import Literal
 
-
 NULL_SHA = "0" * 40
 
 
