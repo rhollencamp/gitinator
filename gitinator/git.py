@@ -103,6 +103,41 @@ class TreeEntry:
         return "tree" if self.mode.startswith("4") else "blob"
 
 
+def build_blob(content: bytes) -> tuple[str, bytes]:
+    """Return (sha, data) for a git blob object."""
+    sha = compute_sha("blob", content)
+    return sha, content
+
+
+def build_tree(entries: list[TreeEntry]) -> tuple[str, bytes]:
+    """Return (sha, data) for a git tree object.
+
+    Entries are sorted by name (git canonical order). Binary format:
+    repeated "<mode> <name>\\0<20-byte-sha>" records.
+    """
+    sorted_entries = sorted(entries, key=lambda e: e.name)
+    data = b"".join(
+        f"{e.mode} {e.name}\x00".encode() + bytes.fromhex(e.sha)
+        for e in sorted_entries
+    )
+    sha = compute_sha("tree", data)
+    return sha, data
+
+
+def build_commit(
+    tree_sha: str, message: str, author: str, committer: str
+) -> tuple[str, bytes]:
+    """Return (sha, data) for a git commit object."""
+    data = (
+        f"tree {tree_sha}\n"
+        f"author {author}\n"
+        f"committer {committer}\n"
+        f"\n{message}"
+    ).encode()
+    sha = compute_sha("commit", data)
+    return sha, data
+
+
 def parse_tree(data: bytes) -> list[TreeEntry]:
     """Parse raw tree object bytes into a list of TreeEntry.
 
