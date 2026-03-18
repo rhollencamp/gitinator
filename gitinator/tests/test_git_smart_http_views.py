@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse as url_for
 
 from gitinator import pack, pktline
+from gitinator.git import NULL_SHA
 from gitinator.models import GitObject, GitRef
 from gitinator.tests.factories import (
     COMMIT_SHA,
@@ -286,9 +287,6 @@ class UploadPackViewTest(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-_NULL_SHA = "0" * 40
-
-
 def _git_sha(obj_type, data):
     """Compute the git SHA-1 for an object: sha1("<type> <size>\\0<data>")."""
     header = f"{obj_type} {len(data)}\x00".encode()
@@ -298,6 +296,9 @@ def _git_sha(obj_type, data):
 class ReceivePackViewTest(TestCase):
     NEW_COMMIT_DATA = b"new commit"
     NEW_COMMIT_SHA = _git_sha(GitObject.Type.COMMIT, NEW_COMMIT_DATA)
+    # Fast-forward commit: parent points to COMMIT_SHA so the hook allows it
+    FF_COMMIT_DATA = f"parent {COMMIT_SHA}\n\nff commit".encode()
+    FF_COMMIT_SHA = _git_sha(GitObject.Type.COMMIT, FF_COMMIT_DATA)
 
     def setUp(self):
         fixture = make_repo_fixture()
@@ -356,7 +357,7 @@ class ReceivePackViewTest(TestCase):
         response = self.client.post(
             url,
             data=self._build_request_body(
-                [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")]
+                [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")]
             ),
             content_type="application/x-git-receive-pack-request",
         )
@@ -365,7 +366,7 @@ class ReceivePackViewTest(TestCase):
     def test_returns_200_for_valid_push(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         self.assertEqual(response.status_code, 200)
@@ -373,7 +374,7 @@ class ReceivePackViewTest(TestCase):
     def test_returns_correct_content_type(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         self.assertEqual(
@@ -383,7 +384,7 @@ class ReceivePackViewTest(TestCase):
     def test_cache_control_is_no_cache(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         self.assertEqual(response["Cache-Control"], "no-cache")
@@ -391,7 +392,7 @@ class ReceivePackViewTest(TestCase):
     def test_response_contains_unpack_ok(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         lines = self._parse_response(response.content)
@@ -400,7 +401,7 @@ class ReceivePackViewTest(TestCase):
     def test_response_contains_ref_status_ok(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         lines = self._parse_response(response.content)
@@ -409,7 +410,7 @@ class ReceivePackViewTest(TestCase):
     def test_creates_new_branch(self):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         self.assertTrue(
@@ -427,81 +428,86 @@ class ReceivePackViewTest(TestCase):
             ]
         )
         self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")],
             pack_data,
         )
         # 3 original + 3 new = 6 total
         self.assertEqual(self.repo.git_objects.count(), 6)
 
     def test_updates_existing_ref(self):
-        pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
+        pack_data = self._build_pack([(GitObject.Type.COMMIT, self.FF_COMMIT_DATA)])
         self._post_receive_pack(
-            [(COMMIT_SHA, self.NEW_COMMIT_SHA, "refs/heads/main")],
+            [(COMMIT_SHA, self.FF_COMMIT_SHA, "refs/heads/main")],
             pack_data,
         )
         ref = GitRef.objects.get(repository=self.repo, name="main")
-        self.assertEqual(ref.git_object.sha, self.NEW_COMMIT_SHA)
+        self.assertEqual(ref.git_object.sha, self.FF_COMMIT_SHA)
 
     def test_deletes_ref_when_new_sha_is_zero(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         self._post_receive_pack(
-            [(COMMIT_SHA, _NULL_SHA, "refs/heads/main")],
+            [(COMMIT_SHA, NULL_SHA, "refs/heads/feature")],
             b"",
         )
         self.assertFalse(
-            GitRef.objects.filter(repository=self.repo, name="main").exists()
+            GitRef.objects.filter(repository=self.repo, name="feature").exists()
         )
 
     def test_stale_old_sha_on_update_returns_ng(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         response = self._post_receive_pack(
-            [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/main")],
+            [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/feature")],
             pack_data,
         )
         lines = self._parse_response(response.content)
-        self.assertIn(b"ng refs/heads/main stale ref\n", lines)
+        self.assertIn(b"ng refs/heads/feature stale ref\n", lines)
 
     def test_stale_old_sha_does_not_update_ref(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         self._post_receive_pack(
-            [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/main")],
+            [(wrong_old_sha, self.NEW_COMMIT_SHA, "refs/heads/feature")],
             pack_data,
         )
-        ref = GitRef.objects.get(repository=self.repo, name="main")
+        ref = GitRef.objects.get(repository=self.repo, name="feature")
         self.assertEqual(ref.git_object.sha, COMMIT_SHA)
 
     def test_missing_object_returns_ng(self):
         missing_sha = "f" * 40
         response = self._post_receive_pack(
-            [(_NULL_SHA, missing_sha, "refs/heads/new-branch")],
+            [(NULL_SHA, missing_sha, "refs/heads/new-branch")],
             b"",
         )
         lines = self._parse_response(response.content)
         self.assertIn(b"ng refs/heads/new-branch object not found\n", lines)
 
     def test_stale_old_sha_on_delete_returns_ng(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         response = self._post_receive_pack(
-            [(wrong_old_sha, _NULL_SHA, "refs/heads/main")],
+            [(wrong_old_sha, NULL_SHA, "refs/heads/feature")],
             b"",
         )
         lines = self._parse_response(response.content)
-        self.assertIn(b"ng refs/heads/main stale ref\n", lines)
+        self.assertIn(b"ng refs/heads/feature stale ref\n", lines)
 
     def test_stale_old_sha_on_delete_does_not_delete_ref(self):
+        make_branch(self.repo, "feature", self.existing_commit)
         wrong_old_sha = "e" * 40
         self._post_receive_pack(
-            [(wrong_old_sha, _NULL_SHA, "refs/heads/main")],
+            [(wrong_old_sha, NULL_SHA, "refs/heads/feature")],
             b"",
         )
         self.assertTrue(
-            GitRef.objects.filter(repository=self.repo, name="main").exists()
+            GitRef.objects.filter(repository=self.repo, name="feature").exists()
         )
 
     def test_unsupported_ref_namespace_returns_ng(self):
         response = self._post_receive_pack(
-            [(_NULL_SHA, self.NEW_COMMIT_SHA, "refs/notes/commits")],
+            [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/notes/commits")],
             b"",
         )
         self.assertEqual(response.status_code, 200)
@@ -513,7 +519,7 @@ class ReceivePackViewTest(TestCase):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         wrong_sha = "f" * 40
         response = self._post_receive_pack(
-            [(_NULL_SHA, wrong_sha, "refs/heads/new-branch")],
+            [(NULL_SHA, wrong_sha, "refs/heads/new-branch")],
             pack_data,
         )
         lines = self._parse_response(response.content)
@@ -523,7 +529,7 @@ class ReceivePackViewTest(TestCase):
         pack_data = self._build_pack([(GitObject.Type.COMMIT, self.NEW_COMMIT_DATA)])
         wrong_sha = "f" * 40
         self._post_receive_pack(
-            [(_NULL_SHA, wrong_sha, "refs/heads/new-branch")],
+            [(NULL_SHA, wrong_sha, "refs/heads/new-branch")],
             pack_data,
         )
         self.assertFalse(

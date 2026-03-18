@@ -1,3 +1,5 @@
+"""Django app configuration for gitinator."""
+
 from django.apps import AppConfig
 
 

@@ -10,9 +10,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from gitinator import git, pack, pktline
+from gitinator.git import NULL_SHA
+from gitinator.hooks import run_update_hooks
 from gitinator.models import GitObject, GitRef, Repo
 
-_NULL_SHA = "0" * 40
 _SUPPORTED_SERVICES = {"git-upload-pack", "git-receive-pack"}
 
 
@@ -52,7 +53,7 @@ def _build_upload_pack_advertisement(repo):
 
     if not refs:
         # Empty repo: advertise capabilities with null SHA
-        null_sha = _NULL_SHA.encode()
+        null_sha = NULL_SHA.encode()
         capabilities = f"symref=HEAD:refs/heads/{repo.default_branch}".encode()
         line = pktline.encode(null_sha + b" capabilities^{}\x00" + capabilities + b"\n")
         return line + pktline.flush()
@@ -82,7 +83,7 @@ def _build_receive_pack_advertisement(repo):
 
     if not refs:
         # Empty repo: advertise capabilities with null SHA
-        null_sha = _NULL_SHA.encode()
+        null_sha = NULL_SHA.encode()
         line = pktline.encode(null_sha + b" capabilities^{}\x00" + capabilities + b"\n")
         return line + pktline.flush()
 
@@ -155,7 +156,7 @@ def receive_pack(request, group_name, repo_name):
     existing_shas = set(
         GitObject.objects.filter(
             repository=repo,
-            sha__in=[new_sha for _, new_sha, _ in commands if new_sha != _NULL_SHA],
+            sha__in=[new_sha for _, new_sha, _ in commands if new_sha != NULL_SHA],
         ).values_list("sha", flat=True)
     )
 
@@ -169,8 +170,12 @@ def receive_pack(request, group_name, repo_name):
         except ValueError:
             ref_statuses.append((refname, "ng", "unsupported ref"))
             continue
+        hook_error = run_update_hooks(repo, refname, old_sha, new_sha)
+        if hook_error:
+            ref_statuses.append((refname, "ng", hook_error))
+            continue
         if (
-            new_sha != _NULL_SHA
+            new_sha != NULL_SHA
             and new_sha not in received_shas
             and new_sha not in existing_shas
         ):
@@ -178,20 +183,20 @@ def receive_pack(request, group_name, repo_name):
             continue
         try:
             with transaction.atomic():
-                if new_sha == _NULL_SHA:
+                if new_sha == NULL_SHA:
                     # Delete: verify old_sha matches current value
                     qs = (
                         GitRef.objects.select_for_update()
                         .select_related("git_object")
                         .filter(repository=repo, name=ref_name, type=ref_type)
                     )
-                    if old_sha != _NULL_SHA:
+                    if old_sha != NULL_SHA:
                         current = qs.first()
                         if current is None or current.git_object.sha != old_sha:
                             ref_statuses.append((refname, "ng", "stale ref"))
                             continue
                     qs.delete()
-                elif old_sha == _NULL_SHA:
+                elif old_sha == NULL_SHA:
                     # Create
                     git_object = GitObject.objects.get(repository=repo, sha=new_sha)
                     GitRef.objects.create(
