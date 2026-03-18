@@ -7,6 +7,9 @@ from hashlib import sha1
 from typing import Literal
 
 
+NULL_SHA = "0" * 40
+
+
 def compute_sha(obj_type: str, data: bytes) -> str:
     """Compute the SHA-1 for a git object using the loose-object format.
 

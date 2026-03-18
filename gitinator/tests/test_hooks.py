@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse as url_for
 
 from gitinator import hooks, pack, pktline
+from gitinator.git import NULL_SHA
 from gitinator.hooks import run_update_hooks
 from gitinator.hooks.protect_default_branch import update_hook
 from gitinator.models import GitObject
@@ -17,8 +18,6 @@ from gitinator.tests.factories import (
     make_git_object,
     make_repo,
 )
-
-_NULL_SHA = "0" * 40
 
 
 def _git_sha(obj_type, data):
@@ -38,18 +37,18 @@ class HookListTest(TestCase):
         hooks._update_hooks[:] = self._saved_hooks
 
     def test_empty_list_returns_none(self):
-        result = run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
+        result = run_update_hooks(None, "refs/heads/main", NULL_SHA, "a" * 40)
         self.assertIsNone(result)
 
     def test_approving_hook_returns_none(self):
         hooks._update_hooks.append(lambda *a: None)
-        result = run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
+        result = run_update_hooks(None, "refs/heads/main", NULL_SHA, "a" * 40)
         self.assertIsNone(result)
 
     def test_rejecting_hook_returns_reason(self):
         hooks._update_hooks.append(lambda *a: "blocked")
         self.assertEqual(
-            run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40), "blocked"
+            run_update_hooks(None, "refs/heads/main", NULL_SHA, "a" * 40), "blocked"
         )
 
     def test_first_rejection_short_circuits(self):
@@ -64,7 +63,7 @@ class HookListTest(TestCase):
             return None
 
         hooks._update_hooks.extend([hook1, hook2])
-        run_update_hooks(None, "refs/heads/main", _NULL_SHA, "a" * 40)
+        run_update_hooks(None, "refs/heads/main", NULL_SHA, "a" * 40)
         self.assertEqual(calls, [1])
 
 
@@ -89,7 +88,7 @@ class ProtectDefaultBranchTest(TestCase):
     def test_allows_initial_push_to_default_branch(self):
         new_sha = "b" * 40
         make_git_object(self.repo, new_sha, type=GitObject.Type.COMMIT, data=b"init")
-        result = update_hook(self.repo, "refs/heads/main", _NULL_SHA, new_sha)
+        result = update_hook(self.repo, "refs/heads/main", NULL_SHA, new_sha)
         self.assertIsNone(result)
 
     def test_allows_fast_forward_push(self):
@@ -100,7 +99,7 @@ class ProtectDefaultBranchTest(TestCase):
         self.assertIsNone(result)
 
     def test_rejects_deletion_of_default_branch(self):
-        result = update_hook(self.repo, "refs/heads/main", self.OLD_SHA, _NULL_SHA)
+        result = update_hook(self.repo, "refs/heads/main", self.OLD_SHA, NULL_SHA)
         self.assertIsNotNone(result)
 
     def test_rejects_force_push_to_default_branch(self):
@@ -183,7 +182,7 @@ class ProtectDefaultBranchIntegrationTest(TestCase):
         )
 
     def test_deletion_of_default_branch_is_rejected(self):
-        response = self._post([(self.OLD_SHA, _NULL_SHA, "refs/heads/main")])
+        response = self._post([(self.OLD_SHA, NULL_SHA, "refs/heads/main")])
         lines = self._lines(response.content)
         self.assertTrue(
             any(line.startswith(b"ng refs/heads/main ") for line in lines)

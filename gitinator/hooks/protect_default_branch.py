@@ -1,8 +1,6 @@
 """Hook that protects the default branch from deletion and force pushes."""
 
-from gitinator.git import parse_commit
-
-_NULL_SHA = "0" * 40
+from gitinator.git import NULL_SHA, parse_commit
 
 
 def _is_ancestor(repo, old_sha, new_sha):
@@ -34,8 +32,8 @@ def update_hook(repo, refname, old_sha, new_sha):
     """Reject deletions and force pushes to the default branch."""
     if refname != f"refs/heads/{repo.default_branch}":
         return None
-    if new_sha == _NULL_SHA:
+    if new_sha == NULL_SHA:
         return "deletion of default branch is not allowed"
-    if old_sha != _NULL_SHA and not _is_ancestor(repo, old_sha, new_sha):
+    if old_sha != NULL_SHA and not _is_ancestor(repo, old_sha, new_sha):
         return "force push to default branch is not allowed"
     return None
