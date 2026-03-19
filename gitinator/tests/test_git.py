@@ -183,9 +183,21 @@ class BuildTreeTest(SimpleTestCase):
         ]
         _, data = git.build_tree(entries_in)
         entries_out = git.parse_tree(data)
-        # Entries are sorted alphabetically
         self.assertEqual(entries_out[0].name, "a.txt")
         self.assertEqual(entries_out[1].name, "z.txt")
+
+    def test_sort_order_subtree_after_blob_with_same_prefix(self):
+        # Regression: plain alpha sort puts "foo" before "foo-bar", but git
+        # canonical order puts the blob "foo-bar" first because the subtree
+        # "foo" is compared as "foo/" — and '-' (0x2D) < '/' (0x2F).
+        entries_in = [
+            git.TreeEntry(name="foo", sha="a" * 40, mode="40000"),
+            git.TreeEntry(name="foo-bar", sha="b" * 40, mode="100644"),
+        ]
+        _, data = git.build_tree(entries_in)
+        entries_out = git.parse_tree(data)
+        self.assertEqual(entries_out[0].name, "foo-bar")
+        self.assertEqual(entries_out[1].name, "foo")
 
     def test_sha_is_deterministic(self):
         entry = git.TreeEntry(name="file.txt", sha="c" * 40, mode="100644")

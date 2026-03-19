@@ -1,6 +1,8 @@
 """Startup initialization logic for gitinator infrastructure repos."""
 
-_GIT_AUTHOR = "Gitinator <gitinator@localhost> 0 +0000"
+import time
+
+from gitinator.git import TreeEntry, build_blob, build_commit, build_tree
 
 _CONFIG_YAML = """\
 # Gitinator configuration
@@ -14,7 +16,8 @@ def ensure_config_repo(**kwargs):
     Intended to be called from the post_migrate signal so the database is
     guaranteed to be fully set up before any writes occur.
     """
-    from gitinator.git import TreeEntry, build_blob, build_commit, build_tree
+    # Deferred so this module remains importable before the Django app registry
+    # is ready; models must not be imported until the registry is fully set up.
     from gitinator.models import GitObject, GitRef, Repo
 
     if Repo.objects.filter(group_name="gitinator", name="config").exists():
@@ -36,11 +39,12 @@ def ensure_config_repo(**kwargs):
         repository=repo, sha=tree_sha, type=GitObject.Type.TREE, data=tree_data
     )
 
+    now = f"Gitinator <gitinator@thewaffleshop.net> {int(time.time())} +0000"
     commit_sha, commit_data = build_commit(
         tree_sha=tree_sha,
         message="Initial commit\n",
-        author=_GIT_AUTHOR,
-        committer=_GIT_AUTHOR,
+        author=now,
+        committer=now,
     )
     commit = GitObject.objects.create(
         repository=repo, sha=commit_sha, type=GitObject.Type.COMMIT, data=commit_data

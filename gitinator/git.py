@@ -111,13 +111,22 @@ def build_blob(content: bytes) -> tuple[str, bytes]:
     return sha, content
 
 
+def _tree_sort_key(entry: TreeEntry) -> bytes:
+    # Git sorts entries by name bytes, but uses '/' as the end byte for subtrees
+    # and NUL for blobs.  This differs from plain alphabetical when a name is a
+    # prefix of another (e.g. blob "foo-bar" sorts before subtree "foo" because
+    # '-' 0x2D < '/' 0x2F, even though "foo" < "foo-bar" alphabetically).
+    suffix = b"/" if entry.mode.startswith("4") else b"\x00"
+    return entry.name.encode() + suffix
+
+
 def build_tree(entries: list[TreeEntry]) -> tuple[str, bytes]:
     """Return (sha, data) for a git tree object.
 
-    Entries are sorted by name (git canonical order). Binary format:
-    repeated "<mode> <name>\\0<20-byte-sha>" records.
+    Entries are sorted using git canonical order (see ``_tree_sort_key``).
+    Binary format: repeated "<mode> <name>\\0<20-byte-sha>" records.
     """
-    sorted_entries = sorted(entries, key=lambda e: e.name)
+    sorted_entries = sorted(entries, key=_tree_sort_key)
     data = b"".join(
         f"{e.mode} {e.name}\x00".encode() + bytes.fromhex(e.sha) for e in sorted_entries
     )
