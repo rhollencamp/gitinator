@@ -49,7 +49,7 @@ source of the group and repository name.
 ### Schema
 
 ```yaml
-default_branch: main   # required; name of the default branch
+default_branch: main   # optional; name of the default branch (default: "main")
 ```
 
 Additional fields will be added as new features are specified.
@@ -63,6 +63,8 @@ the new tree and upserts every repository definition it finds:
   not yet exist in the database causes a new repository to be created.
 - **Update**: if the repository already exists, its settings (e.g.
   `default_branch`) are updated to match the file.
+- **Empty file**: an empty `repos/{group}/{repo}/config.yaml` is valid and
+  creates or updates the repository using all default values.
 - **No auto-delete**: removing a `repos/{group}/{repo}/config.yaml` entry from
   the config repo does **not** delete the repository or its git history. Deletion
   must be performed through other means (to be specified).
