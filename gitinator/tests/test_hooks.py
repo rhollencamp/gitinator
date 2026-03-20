@@ -2,8 +2,10 @@
 Tests for the git server-side hook registry and built-in hook implementations.
 """
 
+import base64
 import hashlib
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse as url_for
 
@@ -18,6 +20,12 @@ from gitinator.tests.factories import (
     make_git_object,
     make_repo,
 )
+
+
+def _admin_auth_header():
+    """Return an Authorization header for the shared admin test user."""
+    credentials = base64.b64encode(b"admin:secret").decode()
+    return f"Basic {credentials}"
 
 
 def _git_sha(obj_type, data):
@@ -136,6 +144,7 @@ class ProtectDefaultBranchIntegrationTest(TestCase):
             "receive_pack",
             kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
         )
+        User.objects.create_user("admin", password="secret", is_staff=True)
 
     def _build_pack(self, objects):
         class _Obj:
@@ -158,6 +167,7 @@ class ProtectDefaultBranchIntegrationTest(TestCase):
             self.url,
             data=body,
             content_type="application/x-git-receive-pack-request",
+            HTTP_AUTHORIZATION=_admin_auth_header(),
         )
 
     def _lines(self, content):
