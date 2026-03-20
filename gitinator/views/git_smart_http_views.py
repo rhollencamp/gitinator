@@ -4,6 +4,8 @@ Git HTTP protocol views.
 Reference: https://git-scm.com/docs/gitprotocol-http
 """
 
+import logging
+
 from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
 from django.views.decorators.csrf import csrf_exempt
@@ -11,10 +13,11 @@ from django.views.decorators.http import require_GET, require_POST
 
 from gitinator import git, pack, pktline
 from gitinator.git import NULL_SHA
-from gitinator.hooks import run_update_hooks
+from gitinator.hooks import run_post_receive_hooks, run_update_hooks
 from gitinator.models import GitObject, GitRef, Repo
 
 _SUPPORTED_SERVICES = {"git-upload-pack", "git-receive-pack"}
+logger = logging.getLogger(__name__)
 
 
 @require_GET
@@ -222,6 +225,19 @@ def receive_pack(request, group_name, repo_name):
             ref_statuses.append((refname, "ng", "object not found"))
             continue
         ref_statuses.append((refname, "ok", None))
+
+    successful_updates = [
+        (old_sha, new_sha, refname)
+        for (old_sha, new_sha, refname), (_, status, _) in zip(
+            commands, ref_statuses, strict=True
+        )
+        if status == "ok"
+    ]
+    if successful_updates:
+        try:
+            run_post_receive_hooks(repo, successful_updates)
+        except Exception:
+            logger.exception("post-receive hook error")
 
     body = pktline.encode(b"unpack ok\n")
     for refname, status, reason in ref_statuses:
