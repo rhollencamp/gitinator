@@ -150,3 +150,77 @@ class ParseTreeTest(SimpleTestCase):
 
     def test_empty_tree(self):
         self.assertEqual(git.parse_tree(b""), [])
+
+
+class BuildBlobTest(SimpleTestCase):
+    def test_sha_matches_known_value(self):
+        # Same value validated by ComputeShaTest.test_known_blob
+        sha, data = git.build_blob(b"hello world\n")
+        self.assertEqual(sha, "3b18e512dba79e4c8300dd08aeb37f8e728b8dad")
+        self.assertEqual(data, b"hello world\n")
+
+    def test_empty(self):
+        sha, data = git.build_blob(b"")
+        self.assertEqual(sha, "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")
+        self.assertEqual(data, b"")
+
+
+class BuildTreeTest(SimpleTestCase):
+    def test_roundtrip_single_entry(self):
+        sha = "a" * 40
+        entry = git.TreeEntry(name="README.md", sha=sha, mode="100644")
+        _, data = git.build_tree([entry])
+        entries = git.parse_tree(data)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0].name, "README.md")
+        self.assertEqual(entries[0].sha, sha)
+        self.assertEqual(entries[0].mode, "100644")
+
+    def test_roundtrip_multiple_entries(self):
+        entries_in = [
+            git.TreeEntry(name="z.txt", sha="b" * 40, mode="100644"),
+            git.TreeEntry(name="a.txt", sha="a" * 40, mode="100644"),
+        ]
+        _, data = git.build_tree(entries_in)
+        entries_out = git.parse_tree(data)
+        self.assertEqual(entries_out[0].name, "a.txt")
+        self.assertEqual(entries_out[1].name, "z.txt")
+
+    def test_sort_order_subtree_after_blob_with_same_prefix(self):
+        # Regression: plain alpha sort puts "foo" before "foo-bar", but git
+        # canonical order puts the blob "foo-bar" first because the subtree
+        # "foo" is compared as "foo/" — and '-' (0x2D) < '/' (0x2F).
+        entries_in = [
+            git.TreeEntry(name="foo", sha="a" * 40, mode="40000"),
+            git.TreeEntry(name="foo-bar", sha="b" * 40, mode="100644"),
+        ]
+        _, data = git.build_tree(entries_in)
+        entries_out = git.parse_tree(data)
+        self.assertEqual(entries_out[0].name, "foo-bar")
+        self.assertEqual(entries_out[1].name, "foo")
+
+    def test_sha_is_deterministic(self):
+        entry = git.TreeEntry(name="file.txt", sha="c" * 40, mode="100644")
+        sha1, _ = git.build_tree([entry])
+        sha2, _ = git.build_tree([entry])
+        self.assertEqual(sha1, sha2)
+
+
+class BuildCommitTest(SimpleTestCase):
+    def test_roundtrip(self):
+        tree_sha = "a" * 40
+        author = "Alice <alice@example.com> 1700000000 +0000"
+        committer = "Bob <bob@example.com> 1700000001 +0000"
+        message = "Initial commit\n"
+        _, data = git.build_commit(tree_sha, message, author, committer)
+        commit = git.parse_commit(data)
+        self.assertEqual(commit.tree, tree_sha)
+        self.assertEqual(commit.parents, [])
+        self.assertEqual(commit.author, author)
+        self.assertEqual(commit.committer, committer)
+        self.assertEqual(commit.message, message)
+
+    def test_sha_is_deterministic(self):
+        sha1, _ = git.build_commit("a" * 40, "msg\n", "a", "a")
+        sha2, _ = git.build_commit("a" * 40, "msg\n", "a", "a")
+        self.assertEqual(sha1, sha2)

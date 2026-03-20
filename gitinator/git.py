@@ -105,6 +105,46 @@ class TreeEntry:
         return "tree" if self.mode.startswith("4") else "blob"
 
 
+def build_blob(content: bytes) -> tuple[str, bytes]:
+    """Return (sha, data) for a git blob object."""
+    sha = compute_sha("blob", content)
+    return sha, content
+
+
+def _tree_sort_key(entry: TreeEntry) -> bytes:
+    # Git sorts entries by name bytes, but uses '/' as the end byte for subtrees
+    # and NUL for blobs.  This differs from plain alphabetical when a name is a
+    # prefix of another (e.g. blob "foo-bar" sorts before subtree "foo" because
+    # '-' 0x2D < '/' 0x2F, even though "foo" < "foo-bar" alphabetically).
+    suffix = b"/" if entry.mode.startswith("4") else b"\x00"
+    return entry.name.encode() + suffix
+
+
+def build_tree(entries: list[TreeEntry]) -> tuple[str, bytes]:
+    """Return (sha, data) for a git tree object.
+
+    Entries are sorted using git canonical order (see ``_tree_sort_key``).
+    Binary format: repeated "<mode> <name>\\0<20-byte-sha>" records.
+    """
+    sorted_entries = sorted(entries, key=_tree_sort_key)
+    data = b"".join(
+        f"{e.mode} {e.name}\x00".encode() + bytes.fromhex(e.sha) for e in sorted_entries
+    )
+    sha = compute_sha("tree", data)
+    return sha, data
+
+
+def build_commit(
+    tree_sha: str, message: str, author: str, committer: str
+) -> tuple[str, bytes]:
+    """Return (sha, data) for a git commit object."""
+    data = (
+        f"tree {tree_sha}\nauthor {author}\ncommitter {committer}\n\n{message}"
+    ).encode()
+    sha = compute_sha("commit", data)
+    return sha, data
+
+
 def parse_tree(data: bytes) -> list[TreeEntry]:
     """Parse raw tree object bytes into a list of TreeEntry.
 
