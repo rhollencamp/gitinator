@@ -14,6 +14,7 @@ from django.views.decorators.http import require_GET, require_POST
 from gitinator import git, pack, pktline
 from gitinator.git import NULL_SHA
 from gitinator.hooks import run_post_receive_hooks, run_update_hooks
+from gitinator.http_auth import unauthorized_response
 from gitinator.models import GitObject, GitRef, Repo
 
 _SUPPORTED_SERVICES = {"git-upload-pack", "git-receive-pack"}
@@ -31,6 +32,9 @@ def info_refs(request, group_name, repo_name):
     service = request.GET.get("service")
     if service not in _SUPPORTED_SERVICES:
         return HttpResponseForbidden("Unsupported service")
+
+    if service == "git-receive-pack" and not request.user.is_staff:
+        return unauthorized_response()
 
     try:
         repo = Repo.objects.get(group_name=group_name, name=repo_name)
@@ -113,6 +117,9 @@ def receive_pack(request, group_name, repo_name):
     Responds to POST /group/repo/git-receive-pack with a pkt-line status
     report (unpack ok + per-ref ok/error lines).
     """
+    if not request.user.is_staff:
+        return unauthorized_response()
+
     try:
         repo = Repo.objects.get(group_name=group_name, name=repo_name)
     except Repo.DoesNotExist:

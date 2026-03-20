@@ -15,6 +15,7 @@ setup:
 	. venv/bin/activate && pip install --upgrade pip
 	. venv/bin/activate && pip install -e ".[dev]"
 	. venv/bin/activate && python3 manage.py migrate
+	. venv/bin/activate && DJANGO_SUPERUSER_PASSWORD=helloworld python manage.py createsuperuser --noinput --username admin --email admin@thewaffleshop.net
 
 format:
 	. venv/bin/activate && ruff format .

@@ -1,6 +1,8 @@
+import base64
 import hashlib
 import struct
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse as url_for
 
@@ -14,6 +16,12 @@ from gitinator.tests.factories import (
     make_repo,
     make_repo_fixture,
 )
+
+
+def _admin_auth_header():
+    """Return an Authorization header for the shared admin test user."""
+    credentials = base64.b64encode(b"admin:secret").decode()
+    return f"Basic {credentials}"
 
 
 class InfoRefsViewTest(TestCase):
@@ -135,9 +143,14 @@ class ReceivePackInfoRefsTest(TestCase):
             "info_refs",
             kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
         )
+        User.objects.create_user("admin", password="secret", is_staff=True)
 
     def _get_info_refs(self):
-        return self.client.get(self.url, {"service": "git-receive-pack"})
+        return self.client.get(
+            self.url,
+            {"service": "git-receive-pack"},
+            HTTP_AUTHORIZATION=_admin_auth_header(),
+        )
 
     def test_returns_200(self):
         response = self._get_info_refs()
@@ -179,7 +192,11 @@ class ReceivePackInfoRefsTest(TestCase):
             "info_refs",
             kwargs={"group_name": empty_repo.group_name, "repo_name": empty_repo.name},
         )
-        response = self.client.get(url, {"service": "git-receive-pack"})
+        response = self.client.get(
+            url,
+            {"service": "git-receive-pack"},
+            HTTP_AUTHORIZATION=_admin_auth_header(),
+        )
         self.assertEqual(response.status_code, 200)
         lines = pktline.decode(response.content)
         # Should have: service header, flush, capabilities^{} line, flush
@@ -309,6 +326,7 @@ class ReceivePackViewTest(TestCase):
             "receive_pack",
             kwargs={"group_name": self.repo.group_name, "repo_name": self.repo.name},
         )
+        User.objects.create_user("admin", password="secret", is_staff=True)
 
     def _build_pack(self, objects):
         """Build a PACK file from a list of (type_str, data) tuples."""
@@ -340,6 +358,7 @@ class ReceivePackViewTest(TestCase):
             self.url,
             data=self._build_request_body(commands, pack_data),
             content_type="application/x-git-receive-pack-request",
+            HTTP_AUTHORIZATION=_admin_auth_header(),
         )
 
     def _parse_response(self, content):
@@ -360,6 +379,7 @@ class ReceivePackViewTest(TestCase):
                 [(NULL_SHA, self.NEW_COMMIT_SHA, "refs/heads/new-branch")]
             ),
             content_type="application/x-git-receive-pack-request",
+            HTTP_AUTHORIZATION=_admin_auth_header(),
         )
         self.assertEqual(response.status_code, 404)
 
