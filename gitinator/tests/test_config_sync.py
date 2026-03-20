@@ -188,6 +188,12 @@ class SyncReposFromConfigTest(TestCase):
         sync_repos_from_config(config_repo)
         self.assertEqual(Repo.objects.count(), before_count)
 
+    def test_empty_yaml_creates_repo_with_default_branch(self):
+        config_repo = _make_test_config_repo_with_blob("myorg", "myrepo", b"")
+        sync_repos_from_config(config_repo)
+        repo = Repo.objects.get(group_name="myorg", name="myrepo")
+        self.assertEqual(repo.default_branch, "main")
+
     def test_skips_invalid_yaml(self):
         config_repo = _make_test_config_repo_with_blob("myorg", "myrepo", b"{{{")
         before = Repo.objects.count()
