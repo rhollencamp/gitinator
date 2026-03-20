@@ -75,13 +75,18 @@ def sync_repos_from_config(config_repo):
             logger.exception("Failed to parse %s; skipping", path)
             continue
 
-        if not isinstance(data, dict):
+        _defaults = {"default_branch": "main"}
+        if data is None:
+            data = _defaults
+        elif not isinstance(data, dict):
             logger.warning("Expected a mapping in %s; skipping", path)
             continue
+        else:
+            data = {**_defaults, **data}
 
-        default_branch = data.get("default_branch")
-        if not default_branch or not isinstance(default_branch, str):
-            logger.warning("Missing or invalid default_branch in %s; skipping", path)
+        default_branch = data["default_branch"]
+        if not isinstance(default_branch, str):
+            logger.warning("Invalid default_branch in %s; skipping", path)
             continue
 
         repo, created = Repo.objects.update_or_create(
