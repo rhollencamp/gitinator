@@ -33,7 +33,11 @@
     </nav>
 
     <main class="container">
-      {% block content %}{% endblock %}
+      <div class="card mt-3">
+        <div class="card-body">
+          {% block content %}{% endblock %}
+        </div>
+      </div>
     </main>
 
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>

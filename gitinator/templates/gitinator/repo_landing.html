@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}{{ repo.name }} - Gitinator{% endblock %}
+
+{% block content %}
+<div class="py-3">
+  <h4>{{ repo.name }}</h4>
+
+  {% include "gitinator/_file_tree.html" %}
+
+  {% if readme_content %}
+  <div class="card mt-2">
+    <div class="card-header">
+      <i class="bi bi-file-earmark-text"></i> README.md
+    </div>
+    <div class="card-body">
+      <pre class="mb-0">{{ readme_content }}</pre>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
