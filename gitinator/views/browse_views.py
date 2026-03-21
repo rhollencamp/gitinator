@@ -15,6 +15,68 @@ def _is_text(data: bytes) -> bool:
 
 
 @require_GET
+def repo_landing(request, group_name, repo_name):
+    """Display the landing page for a repository.
+
+    Shows the root file tree and the contents of README.md if one exists
+    at the root of the default branch.
+    """
+    try:
+        repo = Repo.objects.get(group_name=group_name, name=repo_name)
+    except Repo.DoesNotExist as err:
+        raise Http404 from err
+
+    try:
+        ref = GitRef.objects.select_related("git_object").get(
+            repository=repo, name=repo.default_branch, type=GitRef.Type.BRANCH
+        )
+    except GitRef.DoesNotExist:
+        return render(request, "gitinator/browse_empty.html", {"repo": repo})
+
+    commit_obj = ref.git_object
+    commit_data = git.parse_commit(bytes(commit_obj.data))
+
+    try:
+        tree_obj = GitObject.objects.get(
+            repository=repo, sha=commit_data.tree, type=GitObject.Type.TREE
+        )
+    except GitObject.DoesNotExist as err:
+        raise Http404 from err
+
+    entries = sorted(
+        git.parse_tree(bytes(tree_obj.data)),
+        key=lambda e: (0 if e.type == "tree" else 1, e.name.lower()),
+    )
+
+    readme_content = None
+    readme_entry = next((e for e in entries if e.name.lower() == "readme.md"), None)
+    if readme_entry is not None:
+        try:
+            blob_obj = GitObject.objects.get(repository=repo, sha=readme_entry.sha)
+            blob_data = bytes(blob_obj.data)
+            if _is_text(blob_data):
+                readme_content = blob_data.decode("utf-8", errors="replace")
+        except GitObject.DoesNotExist:
+            pass
+
+    entry_url_base = reverse(
+        "browse", kwargs={"group_name": group_name, "repo_name": repo_name}
+    )
+    return render(
+        request,
+        "gitinator/repo_landing.html",
+        {
+            "repo": repo,
+            "entries": entries,
+            "entry_url_base": entry_url_base,
+            "ref_query": "",
+            "readme_content": readme_content,
+            "commit_obj": commit_obj,
+        },
+    )
+
+
+@require_GET
 def browse(request, group_name, repo_name, path=""):
     """Display the tree or blob at path within a repository.
 
