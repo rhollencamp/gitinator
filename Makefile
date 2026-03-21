@@ -1,4 +1,4 @@
-.PHONY: help setup format lint test dev clean pr fly
+.PHONY: help setup format lint test dev clean pr fly-remote fly-local
 
 help:
 	@echo "Available commands:"
@@ -35,8 +35,11 @@ pr:
 dev:
 	. venv/bin/activate && DEBUG=true python manage.py runserver
 
-fly:
+fly-remote:
 	flyctl deploy --remote-only --image-label $(shell git rev-parse HEAD)
+
+fly-local:
+	DOCKER_HOST=unix://$(shell podman machine inspect --format '{{.ConnectionInfo.PodmanSocket.Path}}') flyctl deploy --local-only --image-label $(shell git rev-parse HEAD)
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
