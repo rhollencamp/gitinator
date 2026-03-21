@@ -21,6 +21,21 @@ _SUPPORTED_SERVICES = {"git-upload-pack", "git-receive-pack"}
 logger = logging.getLogger(__name__)
 
 
+def _read_request_body(request):
+    """Read the full request body, handling Transfer-Encoding: chunked.
+
+    Django's WSGIRequest wraps wsgi.input in a LimitedStream sized by
+    Content-Length. For chunked requests (no Content-Length), the limit is 0
+    and request.body returns b"". In that case, read directly from wsgi.input
+    which Gunicorn has already decoded from chunked encoding.
+
+    Upstream ticket https://code.djangoproject.com/ticket/35838
+    """
+    if request.META.get("HTTP_TRANSFER_ENCODING", "").lower() == "chunked":
+        return request.META["wsgi.input"].read()
+    return request.body
+
+
 @require_GET
 def info_refs(request, group_name, repo_name):
     """
@@ -125,7 +140,9 @@ def receive_pack(request, group_name, repo_name):
     except Repo.DoesNotExist:
         return HttpResponseNotFound()
 
-    commands_raw, pack_data = pktline.decode_stream(request.body)
+    body = _read_request_body(request)
+
+    commands_raw, pack_data = pktline.decode_stream(body)
 
     # Parse ref-update commands. First line may have NUL-separated capabilities.
     commands = []

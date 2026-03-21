@@ -32,7 +32,8 @@ pr:
 	. venv/bin/activate && python manage.py test
 
 dev:
-	. venv/bin/activate && DEBUG=true python manage.py runserver
+	. venv/bin/activate && DEBUG=true gunicorn config.wsgi:application --bind 0.0.0.0:8000 --reload
+
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
