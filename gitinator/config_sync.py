@@ -72,7 +72,7 @@ def sync_repos_from_config(config_repo):
             raw = _read_blob(config_repo, blob_sha)
             data = yaml.safe_load(raw)
         except Exception:
-            logger.exception("Failed to parse %s; skipping", path)
+            logger.debug("Failed to parse %s; skipping", path, exc_info=True)
             continue
 
         _defaults = {"default_branch": "main"}

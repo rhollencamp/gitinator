@@ -3,9 +3,10 @@ name = "gitinator"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "Django~=5.2.0",
+    "Django~=5.2",
     "gunicorn~=23.0",
     "pyyaml~=6.0",
+    "structlog~=25.0",
 ]
 
 # Setuptools auto-discovery finds both `gitinator` and `config` (the Django
