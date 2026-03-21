@@ -39,6 +39,11 @@ urlpatterns = [
         name="receive_pack",
     ),
     path(
+        "repos/<str:group_name>/<str:repo_name>/",
+        views.repo_landing,
+        name="repo_landing",
+    ),
+    path(
         "repos/<str:group_name>/<str:repo_name>/browse/",
         views.browse,
         name="browse",

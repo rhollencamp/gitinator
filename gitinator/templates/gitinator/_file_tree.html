@@ -1,0 +1,16 @@
+<table class="table table-sm table-hover">
+  <tbody>
+    {% for entry in entries %}
+    <tr>
+      <td>
+        {% if entry.type == "tree" %}
+          <i class="bi bi-folder-fill text-primary"></i>
+        {% else %}
+          <i class="bi bi-file-earmark-text"></i>
+        {% endif %}
+        <a class="text-decoration-none text-body" href="{{ entry_url_base }}{{ entry.name }}{{ ref_query }}">{{ entry.name }}</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
