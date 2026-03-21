@@ -189,6 +189,52 @@ class ValidateConfigRepoHookTest(TestCase):
         self.assertIn("my@repo", result)
 
 
+class ValidateConfigRepoYamlTest(TestCase):
+    """Tests for YAML content validation in config.yaml files."""
+
+    def setUp(self):
+        self.config_repo = Repo.objects.get(group_name="gitinator", name="config")
+
+    def _push(self, tree_entries):
+        commit_sha = _make_commit_with_tree(self.config_repo, tree_entries)
+        return update_hook(self.config_repo, "refs/heads/main", NULL_SHA, commit_sha)
+
+    def test_accepts_empty_config_yaml(self):
+        result = self._push([("repos/myorg/myrepo/config.yaml", b"")])
+        self.assertIsNone(result)
+
+    def test_accepts_null_yaml(self):
+        result = self._push([("repos/myorg/myrepo/config.yaml", b"null\n")])
+        self.assertIsNone(result)
+
+    def test_accepts_valid_default_branch(self):
+        result = self._push(
+            [("repos/myorg/myrepo/config.yaml", b"default_branch: develop\n")]
+        )
+        self.assertIsNone(result)
+
+    def test_rejects_invalid_yaml(self):
+        result = self._push(
+            [("repos/myorg/myrepo/config.yaml", b"key: [unclosed\n")]
+        )
+        self.assertIsNotNone(result)
+        self.assertIn("invalid YAML", result)
+        self.assertIn("repos/myorg/myrepo/config.yaml", result)
+
+    def test_rejects_non_mapping_yaml(self):
+        result = self._push([("repos/myorg/myrepo/config.yaml", b"- item1\n- item2\n")])
+        self.assertIsNotNone(result)
+        self.assertIn("expected a mapping", result)
+
+    def test_rejects_non_string_default_branch(self):
+        result = self._push(
+            [("repos/myorg/myrepo/config.yaml", b"default_branch: 42\n")]
+        )
+        self.assertIsNotNone(result)
+        self.assertIn("default_branch", result)
+        self.assertIn("string", result)
+
+
 class ValidateConfigRepoRegistryTest(TestCase):
     """Verify the hook is registered in the update hook list."""
 
