@@ -214,9 +214,7 @@ class ValidateConfigRepoYamlTest(TestCase):
         self.assertIsNone(result)
 
     def test_rejects_invalid_yaml(self):
-        result = self._push(
-            [("repos/myorg/myrepo/config.yaml", b"key: [unclosed\n")]
-        )
+        result = self._push([("repos/myorg/myrepo/config.yaml", b"key: [unclosed\n")])
         self.assertIsNotNone(result)
         self.assertIn("invalid YAML", result)
         self.assertIn("repos/myorg/myrepo/config.yaml", result)

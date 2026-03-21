@@ -44,7 +44,9 @@ def _validate_path(path):
 
 
 def update_hook(repo, refname, old_sha, new_sha):
-    """Reject pushes to gitinator/config that contain invalid paths, names, or malformed config.yaml files."""
+    """Reject pushes to gitinator/config with invalid paths, names, or malformed
+    config.yaml.
+    """
     if repo.group_name != "gitinator" or repo.name != "config":
         return None
 
