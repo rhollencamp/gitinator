@@ -2,6 +2,8 @@
 
 import re
 
+import yaml
+
 from gitinator.config_sync import walk_tree
 from gitinator.git import NULL_SHA, parse_commit
 
@@ -42,7 +44,9 @@ def _validate_path(path):
 
 
 def update_hook(repo, refname, old_sha, new_sha):
-    """Reject pushes to gitinator/config that contain invalid paths or names."""
+    """Reject pushes to gitinator/config with invalid paths, names, or malformed
+    config.yaml.
+    """
     if repo.group_name != "gitinator" or repo.name != "config":
         return None
 
@@ -60,9 +64,26 @@ def update_hook(repo, refname, old_sha, new_sha):
 
     commit = parse_commit(bytes(commit_obj.data))
 
-    for path, _ in walk_tree(repo, commit.tree):
+    for path, blob_sha in walk_tree(repo, commit.tree):
         error = _validate_path(path)
         if error:
             return error
+
+        parts = path.split("/")
+        if len(parts) == 4 and parts[0] == "repos" and parts[3] == "config.yaml":
+            blob_obj = GitObject.objects.get(
+                repository=repo, sha=blob_sha, type=GitObject.Type.BLOB
+            )
+            raw = bytes(blob_obj.data)
+            try:
+                data = yaml.safe_load(raw)
+            except yaml.YAMLError as exc:
+                return f"invalid YAML in {path}: {exc}"
+            if data is not None and not isinstance(data, dict):
+                return f"{path}: expected a mapping, got {type(data).__name__}"
+            if isinstance(data, dict):
+                default_branch = data.get("default_branch")
+                if default_branch is not None and not isinstance(default_branch, str):
+                    return f"{path}: 'default_branch' must be a string"
 
     return None
