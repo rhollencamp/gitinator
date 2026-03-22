@@ -15,7 +15,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from django.conf import settings
 from django.contrib import admin
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 from django.urls import path
 
 from gitinator import views
@@ -54,3 +56,8 @@ urlpatterns = [
         name="browse_path",
     ),
 ]
+
+# Serve static files in dev — django runserver does this automatically, but we use
+# gunicorn, so we wire it up explicitly. Only active when DEBUG=True.
+if settings.DEBUG:
+    urlpatterns += staticfiles_urlpatterns()
