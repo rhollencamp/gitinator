@@ -32,7 +32,7 @@ pr:
 	. venv/bin/activate && python manage.py test
 
 dev:
-	. venv/bin/activate && DEBUG=true gunicorn config.wsgi:application --bind 0.0.0.0:8000 --reload
+	. venv/bin/activate && DEBUG=true gunicorn config.wsgi:application --bind 0.0.0.0:8000 --reload --config config/gunicorn.py
 
 
 clean:

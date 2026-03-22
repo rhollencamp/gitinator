@@ -14,7 +14,7 @@ import os
 import sys
 from pathlib import Path
 
-import structlog
+from config.logging_config import build_logging_dict
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "gitinator.middleware.StructlogContextMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -137,72 +138,12 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Logging — structlog bridges the stdlib logger so existing logging.getLogger()
 # calls in app code are processed by structlog's processor chain.
+# See config/logging_config.py; the same setup is applied in the gunicorn master process.
 
-_shared_processors: list[structlog.types.Processor] = [
-    structlog.contextvars.merge_contextvars,
-    structlog.stdlib.add_log_level,
-    structlog.stdlib.add_logger_name,
-    structlog.processors.TimeStamper(fmt="iso"),
-    structlog.processors.StackInfoRenderer(),
-]
-
-structlog.configure(
-    processors=_shared_processors
-    + [structlog.stdlib.ProcessorFormatter.wrap_for_formatter],
-    wrapper_class=structlog.stdlib.BoundLogger,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    cache_logger_on_first_use=True,
-)
-
-_final_processors: list[structlog.types.Processor] = (
-    [
-        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        structlog.dev.ConsoleRenderer(),
-    ]
-    if DEBUG
-    else [
-        structlog.processors.ExceptionRenderer(),
-        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        structlog.processors.JSONRenderer(),
-    ]
-)
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "structlog": {
-            "()": structlog.stdlib.ProcessorFormatter,
-            "processors": _final_processors,
-            "foreign_pre_chain": _shared_processors,
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "structlog",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "WARNING",
-    },
-    "loggers": {
-        "django": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "gitinator": {
-            "handlers": ["console"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-    },
-}
+LOGGING = build_logging_dict(DEBUG)
 
 # Suppress expected warnings (404s, 400s, auth failures, etc.) during test runs
-# so test output stays clean. ERROR and CRITICAL remain visible.
+# so test output stays clean. ERROR and CRITICAL remains visible.
 if "test" in sys.argv:
     LOGGING["root"]["level"] = "ERROR"
     for logger in LOGGING["loggers"].values():
