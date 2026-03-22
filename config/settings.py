@@ -138,7 +138,8 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # Logging — structlog bridges the stdlib logger so existing logging.getLogger()
 # calls in app code are processed by structlog's processor chain.
-# See config/logging_config.py; the same setup is applied in the gunicorn master process.
+# See config/logging_config.py; the same setup is applied in the gunicorn master
+# process.
 
 LOGGING = build_logging_dict(DEBUG)
 

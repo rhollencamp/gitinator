@@ -1,4 +1,4 @@
-"""Shared structlog configuration used by both Django settings and the gunicorn master process."""
+"""Shared structlog configuration for Django settings and the gunicorn master process."""
 
 import logging
 import logging.config
